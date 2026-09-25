@@ -7,6 +7,7 @@ const ENLACES = [
   { href: '/admin', label: 'Panel' },
   { href: '/admin/obras', label: 'Obras' },
   { href: '/admin/personas', label: 'Personas' },
+  { href: '/admin/reportes', label: 'Reportes' },
 ];
 
 export function AdminNav() {
