@@ -1,0 +1,451 @@
+// ObraVisible — Schema de base de datos
+// Convención: igual que tienda-web/backend/prisma/schema.prisma
+//   - ids uuid, campos en camelCase, tablas mapeadas a snake_case (@@map)
+//   - índices explícitos por FK y por patrones de consulta frecuentes
+//
+// Diferencia clave: los campos de geolocalización usan Unsupported("geometry...")
+// porque Prisma no tiene un tipo nativo para PostGIS. Ver notas al final del archivo.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis]
+}
+
+// ========================================
+// ENUMS
+// ========================================
+
+enum EstadoPublicacion {
+  BORRADOR
+  EN_REVISION
+  PUBLICADO
+}
+
+enum RolUsuario {
+  SUPER_ADMIN
+  ADMIN_ENTE
+  EDITOR_OBRA
+  APROBADOR
+  CONSULTA
+}
+
+enum TipoMultimedia {
+  IMAGEN
+  VIDEO
+  DOCUMENTO
+}
+
+enum EtapaMultimedia {
+  ANTES
+  DURANTE
+  DESPUES
+}
+
+enum EstadoModeracion {
+  PENDIENTE
+  APROBADO
+  RECHAZADO
+}
+
+// ========================================
+// TERRITORIO (con límites geográficos PostGIS)
+// ========================================
+
+model Estado {
+  id         String      @id @default(uuid())
+  nombre     String      @unique
+  codigo     String      @unique
+  // Polígono del límite del estado, usado para "obras dentro de este estado"
+  geometria  Unsupported("geometry(MultiPolygon, 4326)")?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  municipios Municipio[]
+  obras      Obra[]
+  usuarios   Usuario[]
+
+  @@map("estados")
+}
+
+model Municipio {
+  id         String      @id @default(uuid())
+  nombre     String
+  estadoId   String
+  geometria  Unsupported("geometry(MultiPolygon, 4326)")?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  estado     Estado      @relation(fields: [estadoId], references: [id], onDelete: Restrict)
+  parroquias Parroquia[]
+  obras      Obra[]
+
+  @@unique([estadoId, nombre])
+  @@index([estadoId])
+  @@map("municipios")
+}
+
+model Parroquia {
+  id          String    @id @default(uuid())
+  nombre      String
+  municipioId String
+  geometria   Unsupported("geometry(MultiPolygon, 4326)")?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  municipio   Municipio @relation(fields: [municipioId], references: [id], onDelete: Restrict)
+  obras       Obra[]
+
+  @@unique([municipioId, nombre])
+  @@index([municipioId])
+  @@map("parroquias")
+}
+
+// ========================================
+// CATÁLOGOS
+// ========================================
+
+model TipoObra {
+  id        String   @id @default(uuid())
+  nombre    String   @unique // Salud, Educación, Vialidad, Vivienda, Agua, Electricidad...
+  icono     String?
+  color     String?
+  createdAt DateTime @default(now())
+
+  obras     Obra[]
+
+  @@map("tipos_obra")
+}
+
+model EstatusObra {
+  id        String   @id @default(uuid())
+  nombre    String   @unique // Planificada, En ejecución, Paralizada, Culminada, Inaugurada
+  color     String?
+  orden     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  obras     Obra[]
+
+  @@map("estatus_obra")
+}
+
+model Ente {
+  id        String    @id @default(uuid())
+  nombre    String    @unique
+  siglas    String?
+  logoUrl   String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  obras     Obra[]
+  usuarios  Usuario[]
+
+  @@map("entes")
+}
+
+model Contratista {
+  id          String   @id @default(uuid())
+  razonSocial String   @unique
+  rif         String?  @unique
+  contacto    String?
+  telefono    String?
+  email       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  obras       Obra[]
+
+  @@map("contratistas")
+}
+
+model FuenteFinanciamiento {
+  id        String   @id @default(uuid())
+  nombre    String   @unique
+  createdAt DateTime @default(now())
+
+  obras     Obra[]
+
+  @@map("fuentes_financiamiento")
+}
+
+model Cargo {
+  id              String         @id @default(uuid())
+  nombre          String         @unique // Jefe de obra, Ingeniero residente, Obrero, Personal de limpieza...
+  nivelJerarquico Int            @default(0) // 1 = más alto en el organigrama
+  area            String?
+  createdAt       DateTime       @default(now())
+
+  asignaciones    ObraPersonal[]
+
+  @@map("cargos")
+}
+
+// ========================================
+// OBRAS
+// ========================================
+
+model Obra {
+  id                     String            @id @default(uuid())
+  codigo                 String            @unique // OBR-2026-00123
+  slug                   String            @unique
+  nombre                 String
+  descripcion            String?
+
+  tipoObraId             String
+  estatusId              String
+  enteId                 String
+  contratistaId          String?
+  fuenteFinanciamientoId String?
+
+  estadoId               String
+  municipioId            String
+  parroquiaId            String?
+  direccion              String?
+
+  // Punto principal de la obra (hospital, escuela) — usado en los marcadores del mapa
+  ubicacion              Unsupported("geometry(Point, 4326)")?
+  // Trazado opcional para obras lineales o de área (carreteras, tuberías, urbanismos)
+  trazado                Unsupported("geometry(Geometry, 4326)")?
+
+  // Decimal en vez de Float (a diferencia de tienda-web) para evitar errores de
+  // redondeo en montos grandes de presupuesto público.
+  presupuestoAprobado    Decimal           @default(0) @db.Decimal(18, 2)
+  montoEjecutado         Decimal           @default(0) @db.Decimal(18, 2)
+  moneda                 String            @default("VES")
+
+  fechaAprobacion        DateTime?
+  fechaInicio            DateTime?
+  fechaFinEstimada       DateTime?
+  fechaFinReal           DateTime?
+
+  avanceFisico           Float             @default(0) // 0-100
+  avanceFinanciero       Float             @default(0) // 0-100
+
+  beneficiarios          Int?
+  capacidadDescripcion   String? // "120 camas", "800 estudiantes", "14 km"
+
+  destacada              Boolean           @default(false)
+  estadoPublicacion      EstadoPublicacion @default(BORRADOR)
+
+  creadoPor              String?
+  actualizadoPor         String?
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+
+  tipoObra               TipoObra              @relation(fields: [tipoObraId], references: [id], onDelete: Restrict)
+  estatus                EstatusObra           @relation(fields: [estatusId], references: [id], onDelete: Restrict)
+  ente                   Ente                  @relation(fields: [enteId], references: [id], onDelete: Restrict)
+  contratista            Contratista?          @relation(fields: [contratistaId], references: [id], onDelete: SetNull)
+  fuenteFinanciamiento   FuenteFinanciamiento? @relation(fields: [fuenteFinanciamientoId], references: [id], onDelete: SetNull)
+  estado                 Estado                @relation(fields: [estadoId], references: [id], onDelete: Restrict)
+  municipio              Municipio             @relation(fields: [municipioId], references: [id], onDelete: Restrict)
+  parroquia              Parroquia?            @relation(fields: [parroquiaId], references: [id], onDelete: SetNull)
+
+  avances                Avance[]
+  hitos                  Hito[]
+  multimedia             Multimedia[]
+  personal               ObraPersonal[]
+  reportesCiudadanos     ReporteCiudadano[]
+  suscripciones          Suscripcion[]
+
+  @@index([estatusId])
+  @@index([tipoObraId])
+  @@index([estadoId])
+  @@index([municipioId])
+  @@index([estadoPublicacion])
+  @@index([destacada])
+  @@index([createdAt(sort: Desc)])
+  @@map("obras")
+}
+
+model Avance {
+  id               String    @id @default(uuid())
+  obraId           String
+  fecha            DateTime  @default(now())
+  avanceFisico     Float
+  avanceFinanciero Float
+  comentario       String?
+  registradoPor    String?
+  aprobadoPor      String?
+  aprobadoEn       DateTime?
+  createdAt        DateTime  @default(now())
+
+  obra             Obra        @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  multimedia       Multimedia[]
+
+  @@index([obraId, fecha(sort: Desc)])
+  @@map("avances")
+}
+
+model Hito {
+  id               String    @id @default(uuid())
+  obraId           String
+  nombre           String
+  fechaPlanificada DateTime?
+  fechaReal        DateTime?
+  completado       Boolean   @default(false)
+  orden            Int       @default(0)
+  createdAt        DateTime  @default(now())
+
+  obra             Obra      @relation(fields: [obraId], references: [id], onDelete: Cascade)
+
+  @@index([obraId])
+  @@map("hitos")
+}
+
+model Multimedia {
+  id           String           @id @default(uuid())
+  obraId       String
+  avanceId     String?
+  tipo         TipoMultimedia   @default(IMAGEN)
+  url          String
+  miniaturaUrl String?
+  titulo       String?
+  etapa        EtapaMultimedia?
+  esPortada    Boolean          @default(false)
+  orden        Int              @default(0)
+  fechaCaptura DateTime? // fecha EXIF de la foto, evidencia de campo
+  latitudExif  Float?
+  longitudExif Float?
+  createdAt    DateTime         @default(now())
+
+  obra         Obra             @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  avance       Avance?          @relation(fields: [avanceId], references: [id], onDelete: SetNull)
+
+  @@index([obraId])
+  @@index([avanceId])
+  @@map("multimedia")
+}
+
+// ========================================
+// PERSONAL
+// ========================================
+
+model Persona {
+  id                        String    @id @default(uuid())
+  nombres                   String
+  apellidos                 String
+  fotoUrl                   String?
+  profesion                 String?
+  especialidad              String?
+  aniosExperiencia          Int?
+  bioCorta                  String?
+  // Privado: nunca se expone en la API pública, solo uso administrativo/legal.
+  documentoIdentidad        String?
+  consentimientoPublicacion Boolean   @default(false)
+  fechaConsentimiento       DateTime?
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  asignaciones              ObraPersonal[]
+
+  @@index([apellidos, nombres])
+  @@map("personas")
+}
+
+model ObraPersonal {
+  id             String    @id @default(uuid())
+  obraId         String
+  personaId      String
+  cargoId        String
+  area           String? // cuadrilla o área dentro de la obra
+  supervisorId   String? // apunta a otro registro ObraPersonal (jerarquía en el organigrama)
+  fechaIngreso   DateTime?
+  fechaSalida    DateTime?
+  visiblePublico Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  obra           Obra           @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  persona        Persona        @relation(fields: [personaId], references: [id], onDelete: Cascade)
+  cargo          Cargo          @relation(fields: [cargoId], references: [id], onDelete: Restrict)
+  supervisor     ObraPersonal?  @relation("Jerarquia", fields: [supervisorId], references: [id], onDelete: SetNull)
+  subordinados   ObraPersonal[] @relation("Jerarquia")
+
+  @@unique([obraId, personaId, cargoId])
+  @@index([obraId])
+  @@index([personaId])
+  @@index([supervisorId])
+  @@map("obra_personal")
+}
+
+// ========================================
+// SISTEMA (usuarios, auditoría, participación ciudadana)
+// ========================================
+
+model Usuario {
+  id                  String     @id @default(uuid())
+  email               String     @unique
+  password            String
+  nombre              String
+  rol                 RolUsuario @default(CONSULTA)
+  twoFactorSecret     String?
+  activo              Boolean    @default(true)
+  enteId              String?
+  estadoRestriccionId String? // si se define, el usuario solo ve obras de este estado
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  ente                Ente?      @relation(fields: [enteId], references: [id], onDelete: SetNull)
+  estadoRestriccion   Estado?    @relation(fields: [estadoRestriccionId], references: [id], onDelete: SetNull)
+
+  @@index([enteId])
+  @@index([estadoRestriccionId])
+  @@map("usuarios")
+}
+
+model Auditoria {
+  id           String   @id @default(uuid())
+  usuarioId    String?
+  accion       String // CREATE, UPDATE, DELETE, PUBLISH, APPROVE...
+  entidad      String // "Obra", "Persona", "Avance"...
+  entidadId    String
+  datosAntes   Json?
+  datosDespues Json?
+  ip           String?
+  createdAt    DateTime @default(now())
+
+  @@index([entidad, entidadId])
+  @@index([usuarioId])
+  @@index([createdAt(sort: Desc)])
+  @@map("auditoria")
+}
+
+model ReporteCiudadano {
+  id               String           @id @default(uuid())
+  obraId           String
+  nombre           String?
+  correo           String?
+  mensaje          String
+  fotoUrl          String?
+  estadoModeracion EstadoModeracion @default(PENDIENTE)
+  moderadoPor      String?
+  moderadoEn       DateTime?
+  createdAt        DateTime         @default(now())
+
+  obra             Obra             @relation(fields: [obraId], references: [id], onDelete: Cascade)
+
+  @@index([obraId])
+  @@index([estadoModeracion])
+  @@map("reportes_ciudadanos")
+}
+
+model Suscripcion {
+  id                String   @id @default(uuid())
+  obraId            String
+  correo            String
+  confirmado        Boolean  @default(false)
+  tokenConfirmacion String?  @unique
+  createdAt         DateTime @default(now())
+
+  obra              Obra     @relation(fields: [obraId], references: [id], onDelete: Cascade)
+
+  @@unique([obraId, correo])
+  @@index([obraId])
+  @@map("suscripciones")
+}

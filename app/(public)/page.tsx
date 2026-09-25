@@ -1,0 +1,113 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import ObrasMapLoader from '@/components/map/obras-map-loader';
+import { MapSidebar } from '@/components/map/map-sidebar';
+import { ObraDetallePanel } from '@/components/map/obra-detalle-panel';
+import { OBRAS_DEMO } from '@/lib/data/obras-demo';
+import type { ObraMapa } from '@/lib/types/obra';
+
+type EstadoCarga = 'cargando' | 'ok' | 'error';
+
+export default function MapaPage() {
+  const [obras, setObras] = useState<ObraMapa[]>([]);
+  const [estado, setEstado] = useState<EstadoCarga>('cargando');
+  const [modoDemo, setModoDemo] = useState(false);
+  const [obraSeleccionada, setObraSeleccionada] = useState<ObraMapa | null>(null);
+  const [tiposActivos, setTiposActivos] = useState<Set<string>>(new Set());
+
+  // Guarda las obras y, en el mismo paso, activa todos sus tipos en el
+  // filtro (evita un segundo efecto encadenado solo para derivar esto).
+  function aplicarObras(nuevas: ObraMapa[]) {
+    setObras(nuevas);
+    setTiposActivos(new Set(nuevas.map((o) => o.tipoObra.nombre)));
+  }
+
+  useEffect(() => {
+    let cancelado = false;
+
+    async function cargarObras() {
+      try {
+        const res = await fetch('/api/obras');
+        if (!res.ok) throw new Error(`API respondió ${res.status}`);
+
+        const data: { obras: ObraMapa[] } = await res.json();
+        if (cancelado) return;
+
+        if (data.obras.length === 0) {
+          // La API funciona pero la base de datos todavía no tiene obras
+          // publicadas (ej. antes de correr `npm run prisma:seed`) — se
+          // muestran datos de demostración para no dejar el mapa vacío,
+          // dejando claro que no son datos reales.
+          aplicarObras(OBRAS_DEMO);
+          setModoDemo(true);
+        } else {
+          aplicarObras(data.obras);
+          setModoDemo(false);
+        }
+        setEstado('ok');
+      } catch (error) {
+        if (cancelado) return;
+        console.error('No se pudo cargar /api/obras:', error);
+        // A diferencia del caso "sin datos", aquí la API sí falló (por
+        // ejemplo, sin DATABASE_URL configurado) — se avisa explícitamente
+        // en vez de disimularlo con datos de demostración.
+        aplicarObras(OBRAS_DEMO);
+        setModoDemo(true);
+        setEstado('error');
+      }
+    }
+
+    cargarObras();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  function toggleTipo(tipo: string) {
+    setTiposActivos((prev) => {
+      const next = new Set(prev);
+      if (next.has(tipo)) {
+        next.delete(tipo);
+      } else {
+        next.add(tipo);
+      }
+      return next;
+    });
+  }
+
+  const obrasFiltradas = obras.filter((o) => tiposActivos.has(o.tipoObra.nombre));
+
+  return (
+    <div className="absolute inset-0 flex">
+      <MapSidebar
+        obras={obras}
+        obrasFiltradas={obrasFiltradas}
+        tiposActivos={tiposActivos}
+        onToggleTipo={toggleTipo}
+      />
+
+      <div className="relative flex-1">
+        <ObrasMapLoader obras={obrasFiltradas} onSeleccionarObra={setObraSeleccionada} />
+
+        {estado === 'cargando' && (
+          <div className="absolute inset-x-0 top-4 mx-auto w-fit rounded-full bg-background/90 px-3 py-1 text-xs text-muted-foreground shadow">
+            Cargando obras…
+          </div>
+        )}
+
+        {modoDemo && estado !== 'cargando' && (
+          <div className="absolute inset-x-0 top-4 mx-auto w-fit rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-900 shadow dark:bg-amber-900/40 dark:text-amber-100">
+            {estado === 'error'
+              ? 'No se pudo conectar con la base de datos — mostrando datos de demostración.'
+              : 'Aún no hay obras publicadas — mostrando datos de demostración.'}
+          </div>
+        )}
+
+        {obraSeleccionada && (
+          <ObraDetallePanel obra={obraSeleccionada} onCerrar={() => setObraSeleccionada(null)} />
+        )}
+      </div>
+    </div>
+  );
+}
