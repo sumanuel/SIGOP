@@ -1,6 +1,11 @@
+import type { EstadoPublicacion } from '@prisma/client';
 import { prisma } from '@/lib/server/prisma';
 import { registrarAuditoria } from '@/lib/server/services/auditoria.service';
-import type { CrearObraInput, ActualizarObraInput } from '@/lib/server/validators/obra.schema';
+import type {
+  CrearObraInput,
+  ActualizarObraInput,
+  CambiarEstadoPublicacionInput,
+} from '@/lib/server/validators/obra.schema';
 import type { ObraMapa } from '@/lib/types/obra';
 
 // Los campos `ubicacion`/`trazado` son `Unsupported("geometry...")` en el
@@ -330,6 +335,86 @@ export async function actualizarObra(id: string, data: ActualizarObraInput, ctx:
     entidadId: obra.id,
     datosAntes: obraAntes,
     datosDespues: obra,
+  });
+
+  return obra;
+}
+
+/** Lanzado cuando la acción pedida no aplica al estado actual de la obra o
+ * al rol de quien la pide — el Route Handler la traduce a un 409/403. */
+export class TransicionInvalidaError extends Error {}
+
+interface Transicion {
+  desde: EstadoPublicacion;
+  hacia: EstadoPublicacion;
+  // Roles que además de SUPER_ADMIN pueden ejecutar esta transición.
+  rolesPermitidos: string[];
+}
+
+// Máquina de estados del flujo Borrador → En revisión → Publicado
+// (PLAN_PROYECTO.md sección 3.2). Cada acción solo es válida desde un
+// estado concreto: esto es lo que impide que un editor "salte" directo a
+// Publicado, o que alguien sin rol de aprobador publique su propio trabajo.
+const TRANSICIONES: Record<CambiarEstadoPublicacionInput['accion'], Transicion> = {
+  ENVIAR_A_REVISION: {
+    desde: 'BORRADOR',
+    hacia: 'EN_REVISION',
+    rolesPermitidos: ['ADMIN_ENTE', 'EDITOR_OBRA'],
+  },
+  APROBAR: {
+    desde: 'EN_REVISION',
+    hacia: 'PUBLICADO',
+    rolesPermitidos: ['ADMIN_ENTE', 'APROBADOR'],
+  },
+  RECHAZAR: {
+    desde: 'EN_REVISION',
+    hacia: 'BORRADOR',
+    rolesPermitidos: ['ADMIN_ENTE', 'APROBADOR'],
+  },
+  DESPUBLICAR: {
+    desde: 'PUBLICADO',
+    hacia: 'BORRADOR',
+    rolesPermitidos: ['ADMIN_ENTE'],
+  },
+};
+
+interface CambiarEstadoPublicacionContext {
+  usuarioId: string;
+  rol: string;
+}
+
+export async function cambiarEstadoPublicacion(
+  id: string,
+  input: CambiarEstadoPublicacionInput,
+  ctx: CambiarEstadoPublicacionContext
+) {
+  const transicion = TRANSICIONES[input.accion];
+
+  if (ctx.rol !== 'SUPER_ADMIN' && !transicion.rolesPermitidos.includes(ctx.rol)) {
+    throw new TransicionInvalidaError('No tienes permiso para realizar esta acción de publicación.');
+  }
+
+  const obraAntes = await prisma.obra.findUnique({ where: { id } });
+  if (!obraAntes) return null;
+
+  if (obraAntes.estadoPublicacion !== transicion.desde) {
+    throw new TransicionInvalidaError(
+      `La obra está en "${obraAntes.estadoPublicacion}"; la acción "${input.accion}" requiere que esté en "${transicion.desde}".`
+    );
+  }
+
+  const obra = await prisma.obra.update({
+    where: { id },
+    data: { estadoPublicacion: transicion.hacia, actualizadoPor: ctx.usuarioId },
+  });
+
+  await registrarAuditoria({
+    usuarioId: ctx.usuarioId,
+    accion: input.accion,
+    entidad: 'Obra',
+    entidadId: obra.id,
+    datosAntes: obraAntes,
+    datosDespues: input.comentario ? { ...obra, comentario: input.comentario } : obra,
   });
 
   return obra;

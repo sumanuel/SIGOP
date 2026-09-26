@@ -4,6 +4,7 @@ import { ChevronLeft } from 'lucide-react';
 import { obtenerCatalogos } from '@/lib/server/services/catalogos.service';
 import { obtenerObraDetalle } from '@/lib/server/services/obras.service';
 import { ObraForm } from '@/components/admin/obra-form';
+import { EstadoPublicacionPanel } from '@/components/admin/estado-publicacion-panel';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -62,6 +63,10 @@ export default async function EditarObraPage({ params }: PageProps) {
       </div>
 
       <div className="mt-6">
+        <EstadoPublicacionPanel obraId={obra.id} estadoActual={obra.estadoPublicacion} />
+      </div>
+
+      <div className="mt-6">
         <ObraForm
           catalogos={catalogos}
           obraId={obra.id}
@@ -93,7 +98,6 @@ export default async function EditarObraPage({ params }: PageProps) {
             beneficiarios: obra.beneficiarios?.toString() ?? '',
             capacidadDescripcion: obra.capacidadDescripcion ?? '',
             destacada: obra.destacada,
-            estadoPublicacion: obra.estadoPublicacion,
           }}
         />
       </div>

@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Plus } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Plus, X } from 'lucide-react';
 import { AdminNav } from '@/components/admin/admin-nav';
 
 interface ObraFila {
@@ -33,10 +33,25 @@ const PUBLICACION_CLASE: Record<ObraFila['estadoPublicacion'], string> = {
 };
 
 export default function AdminObrasPage() {
+  return (
+    <Suspense fallback={<main className="p-8 text-sm text-muted-foreground">Cargando…</main>}>
+      <AdminObrasPageInner />
+    </Suspense>
+  );
+}
+
+function AdminObrasPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [obras, setObras] = useState<ObraFila[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const valorFiltro = searchParams.get('publicacion');
+  const filtroPublicacion: ObraFila['estadoPublicacion'] | null =
+    valorFiltro === 'BORRADOR' || valorFiltro === 'EN_REVISION' || valorFiltro === 'PUBLICADO'
+      ? valorFiltro
+      : null;
 
   useEffect(() => {
     let cancelado = false;
@@ -99,11 +114,39 @@ export default function AdminObrasPage() {
 
       {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
 
-      {cargando ? (
-        <p className="mt-8 text-sm text-muted-foreground">Cargando…</p>
-      ) : obras.length === 0 ? (
-        <p className="mt-8 text-sm text-muted-foreground">Todavía no hay obras registradas.</p>
-      ) : (
+      {filtroPublicacion && (
+        <button
+          type="button"
+          onClick={() => router.replace('/admin/obras')}
+          className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-medium hover:bg-muted/70"
+        >
+          Mostrando solo: {PUBLICACION_LABEL[filtroPublicacion]}
+          <X className="size-3.5" />
+        </button>
+      )}
+
+      {(() => {
+        const obrasFiltradas = filtroPublicacion
+          ? obras.filter((o) => o.estadoPublicacion === filtroPublicacion)
+          : obras;
+
+        if (cargando) {
+          return <p className="mt-8 text-sm text-muted-foreground">Cargando…</p>;
+        }
+        if (obrasFiltradas.length === 0) {
+          return (
+            <p className="mt-8 text-sm text-muted-foreground">
+              {filtroPublicacion ? 'No hay obras en este estado.' : 'Todavía no hay obras registradas.'}
+            </p>
+          );
+        }
+        return renderizarTabla(obrasFiltradas);
+      })()}
+    </main>
+  );
+
+  function renderizarTabla(obras: ObraFila[]) {
+    return (
         <div className="mt-6 overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -166,7 +209,6 @@ export default function AdminObrasPage() {
             </tbody>
           </table>
         </div>
-      )}
-    </main>
-  );
+    );
+  }
 }

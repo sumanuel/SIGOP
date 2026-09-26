@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { AdminNav } from '@/components/admin/admin-nav';
 
 interface UsuarioSesion {
@@ -19,10 +20,15 @@ const ROL_LEGIBLE: Record<string, string> = {
   CONSULTA: 'Consulta',
 };
 
+interface ObraFilaResumen {
+  estadoPublicacion: 'BORRADOR' | 'EN_REVISION' | 'PUBLICADO';
+}
+
 export default function AdminDashboard() {
   const router = useRouter();
   const [usuario, setUsuario] = useState<UsuarioSesion | null>(null);
   const [cargando, setCargando] = useState(true);
+  const [pendientesRevision, setPendientesRevision] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelado = false;
@@ -47,6 +53,20 @@ export default function AdminDashboard() {
     };
   }, [router]);
 
+  useEffect(() => {
+    let cancelado = false;
+    fetch('/api/admin/obras')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { obras: ObraFilaResumen[] } | null) => {
+        if (cancelado || !data) return;
+        setPendientesRevision(data.obras.filter((o) => o.estadoPublicacion === 'EN_REVISION').length);
+      })
+      .catch(() => {});
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
   if (cargando) {
     return <main className="p-8 text-sm text-muted-foreground">Cargando…</main>;
   }
@@ -62,9 +82,18 @@ export default function AdminDashboard() {
         {usuario.nombre} · {ROL_LEGIBLE[usuario.rol] ?? usuario.rol}
       </p>
 
+      {pendientesRevision !== null && pendientesRevision > 0 && (
+        <Link
+          href="/admin/obras?publicacion=EN_REVISION"
+          className="mt-6 flex w-fit items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-100"
+        >
+          {pendientesRevision} obra{pendientesRevision === 1 ? '' : 's'} pendiente
+          {pendientesRevision === 1 ? '' : 's'} de aprobación →
+        </Link>
+      )}
+
       <p className="mt-6 text-sm text-muted-foreground">
-        Dashboard interno: obras con atraso, últimas actualizaciones, pendientes por aprobar (por
-        implementar).
+        Dashboard interno: obras con atraso, últimas actualizaciones (por implementar).
       </p>
     </main>
   );

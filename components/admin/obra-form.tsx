@@ -35,7 +35,6 @@ interface ObraFormValues {
   beneficiarios: string;
   capacidadDescripcion: string;
   destacada: boolean;
-  estadoPublicacion: 'BORRADOR' | 'EN_REVISION' | 'PUBLICADO';
 }
 
 const VALORES_VACIOS: ObraFormValues = {
@@ -66,7 +65,6 @@ const VALORES_VACIOS: ObraFormValues = {
   beneficiarios: '',
   capacidadDescripcion: '',
   destacada: false,
-  estadoPublicacion: 'BORRADOR',
 };
 
 interface ObraFormProps {
@@ -158,7 +156,6 @@ export function ObraForm({ catalogos, obraId, valoresIniciales }: ObraFormProps)
       beneficiarios: valores.beneficiarios ? Number(valores.beneficiarios) : undefined,
       capacidadDescripcion: valores.capacidadDescripcion || undefined,
       destacada: valores.destacada,
-      ...(esEdicion ? { estadoPublicacion: valores.estadoPublicacion } : {}),
     };
 
     try {
@@ -281,22 +278,6 @@ export function ObraForm({ catalogos, obraId, valoresIniciales }: ObraFormProps)
             ))}
           </select>
         </Campo>
-
-        {esEdicion && (
-          <Campo label="Estado de publicación">
-            <select
-              value={valores.estadoPublicacion}
-              onChange={(e) =>
-                actualizar('estadoPublicacion', e.target.value as ObraFormValues['estadoPublicacion'])
-              }
-              className={inputClass}
-            >
-              <option value="BORRADOR">Borrador</option>
-              <option value="EN_REVISION">En revisión</option>
-              <option value="PUBLICADO">Publicado</option>
-            </select>
-          </Campo>
-        )}
 
         <Campo label="">
           <label className="mt-6 flex items-center gap-2 text-sm">

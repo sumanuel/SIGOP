@@ -52,10 +52,13 @@ export const crearObraSchema = z.object({
 
 export type CrearObraInput = z.infer<typeof crearObraSchema>;
 
-// En una actualización todos los campos son opcionales, más el estatus de
-// publicación (parte del flujo Borrador → En revisión → Publicado).
+// En una actualización todos los campos son opcionales. `estadoPublicacion`
+// NO se incluye aquí a propósito: cambiarlo solo es posible a través de
+// `cambiarEstadoPublicacionSchema` (ver más abajo), que valida la transición
+// contra el estado actual y el rol de quien la pide — así ningún editor
+// puede "saltarse" el flujo Borrador → En revisión → Publicado escribiendo
+// el campo directamente en este PUT.
 export const actualizarObraSchema = crearObraSchema.partial().extend({
-  estadoPublicacion: z.enum(['BORRADOR', 'EN_REVISION', 'PUBLICADO']).optional(),
   // `null` explícito permite "quitar" el trazado (la obra dejó de ser lineal).
   trazado: z
     .array(z.tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)]))
@@ -65,3 +68,14 @@ export const actualizarObraSchema = crearObraSchema.partial().extend({
 });
 
 export type ActualizarObraInput = z.infer<typeof actualizarObraSchema>;
+
+// Acciones del flujo de aprobación (PLAN_PROYECTO.md sección 3.2: "Borrador
+// → En revisión → Publicado"). Se modela como acciones de una máquina de
+// estados, no como "escribe el enum que quieras", para que cada transición
+// pueda validar de dónde viene, hacia dónde va y quién tiene permiso.
+export const cambiarEstadoPublicacionSchema = z.object({
+  accion: z.enum(['ENVIAR_A_REVISION', 'APROBAR', 'RECHAZAR', 'DESPUBLICAR']),
+  comentario: z.string().max(500).optional(),
+});
+
+export type CambiarEstadoPublicacionInput = z.infer<typeof cambiarEstadoPublicacionSchema>;
