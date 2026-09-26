@@ -11,6 +11,7 @@ import { ObraAvanceChart } from '@/components/obra/obra-avance-chart';
 import { ObraAcciones } from '@/components/obra/obra-acciones';
 import { ObraReportes } from '@/components/obra/obra-reportes';
 import type { ObraMapa } from '@/lib/types/obra';
+import { calcularAtrasoDias } from '@/lib/atraso';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -31,21 +32,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title: `${obra.nombre} — SIGOP`,
     description: obra.descripcion ?? undefined,
   };
-}
-
-/** Días de atraso: negativo/0 = a tiempo, positivo = atrasada. `null` si no aplica. */
-function calcularAtrasoDias(obra: {
-  fechaFinEstimada: Date | null;
-  fechaFinReal: Date | null;
-  avanceFisico: number;
-}): number | null {
-  if (!obra.fechaFinEstimada) return null;
-
-  const referencia = obra.fechaFinReal ?? (obra.avanceFisico < 100 ? new Date() : null);
-  if (!referencia) return null;
-
-  const diffMs = referencia.getTime() - obra.fechaFinEstimada.getTime();
-  return Math.round(diffMs / (1000 * 60 * 60 * 24));
 }
 
 export default async function ObraFichaPage({ params }: PageProps) {
