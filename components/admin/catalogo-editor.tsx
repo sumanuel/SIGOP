@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Pencil, Trash2, Check, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, type LucideIcon } from 'lucide-react';
 
 interface CampoConfig {
   key: string;
@@ -15,6 +15,11 @@ interface CatalogoEditorProps {
   titulo: string;
   descripcion: string;
   campos: CampoConfig[];
+  icono: LucideIcon;
+  /** Clases de color para el badge del ícono y el borde superior de la
+   * tarjeta — una por catálogo, para separarlos visualmente a simple
+   * vista en vez de que todos se vean como una sola lista larga. */
+  colorClase: string;
 }
 
 type Registro = Record<string, string | number | null> & { id: string };
@@ -27,7 +32,7 @@ function valoresVacios(campos: CampoConfig[]): Record<string, string> {
 // contratistas, fuentes de financiamiento, cargos): todos son la misma
 // forma de CRUD sobre una tabla plana, así que en vez de una página por
 // catálogo esto solo cambia qué campos mostrar (ver app/admin/catalogos).
-export function CatalogoEditor({ recurso, titulo, descripcion, campos }: CatalogoEditorProps) {
+export function CatalogoEditor({ recurso, titulo, descripcion, campos, icono: Icono, colorClase }: CatalogoEditorProps) {
   const router = useRouter();
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -153,11 +158,16 @@ export function CatalogoEditor({ recurso, titulo, descripcion, campos }: Catalog
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-border p-4">
+    <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 shadow-sm">
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-base font-semibold">{titulo}</h2>
-          <p className="text-xs text-muted-foreground">{descripcion}</p>
+        <div className="flex items-start gap-3">
+          <span className={`flex size-10 shrink-0 items-center justify-center rounded-lg border ${colorClase}`}>
+            <Icono className="size-5" />
+          </span>
+          <div>
+            <h2 className="text-base font-semibold">{titulo}</h2>
+            <p className="text-xs text-muted-foreground">{descripcion}</p>
+          </div>
         </div>
         {!creando && (
           <button
@@ -177,14 +187,14 @@ export function CatalogoEditor({ recurso, titulo, descripcion, campos }: Catalog
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+            <thead className="rounded-md bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 {campos.map((c) => (
-                  <th key={c.key} className="px-2 py-1.5">
+                  <th key={c.key} className="px-2 py-2">
                     {c.label}
                   </th>
                 ))}
-                <th className="px-2 py-1.5" />
+                <th className="px-2 py-2" />
               </tr>
             </thead>
             <tbody>

@@ -26,7 +26,29 @@ export interface DashboardInterno {
   obrasConAtraso: ObraConAtraso[];
   actualizacionesRecientes: ActualizacionReciente[];
   pendientesAprobacion: number;
+  totales: {
+    obras: number;
+    personas: number;
+    reportesPendientes: number;
+  };
+  obrasPorEstatus: { nombre: string; color: string; cantidad: number }[];
+  obrasPorPublicacion: { estado: string; etiqueta: string; color: string; cantidad: number }[];
 }
+
+const PUBLICACION_LABEL: Record<string, string> = {
+  BORRADOR: 'Borrador',
+  EN_REVISION: 'En revisión',
+  PUBLICADO: 'Publicado',
+};
+
+// Mismos colores que las insignias de estado de publicación ya usadas en
+// /admin/obras y el panel de aprobación — una sola paleta para ese
+// concepto en toda la app.
+const PUBLICACION_COLOR: Record<string, string> = {
+  BORRADOR: '#94A3B8',
+  EN_REVISION: '#D97706',
+  PUBLICADO: '#059669',
+};
 
 const LIMITE_OBRAS_ATRASADAS = 10;
 const LIMITE_ACTUALIZACIONES = 8;
@@ -40,7 +62,15 @@ const LIMITE_ACTUALIZACIONES = 8;
  * culminadas al 100%).
  */
 export async function obtenerDashboardInterno(): Promise<DashboardInterno> {
-  const [obrasCandidatas, avancesRecientes, pendientesAprobacion] = await Promise.all([
+  const [
+    obrasCandidatas,
+    avancesRecientes,
+    pendientesAprobacion,
+    totalObras,
+    totalPersonas,
+    reportesPendientes,
+    obrasParaGraficos,
+  ] = await Promise.all([
     prisma.obra.findMany({
       where: { fechaFinEstimada: { not: null }, fechaFinReal: null, avanceFisico: { lt: 100 } },
       select: {
@@ -68,6 +98,12 @@ export async function obtenerDashboardInterno(): Promise<DashboardInterno> {
       },
     }),
     prisma.obra.count({ where: { estadoPublicacion: 'EN_REVISION' } }),
+    prisma.obra.count(),
+    prisma.persona.count(),
+    prisma.reporteCiudadano.count({ where: { estadoModeracion: 'PENDIENTE' } }),
+    prisma.obra.findMany({
+      select: { estadoPublicacion: true, estatus: { select: { nombre: true, color: true } } },
+    }),
   ]);
 
   const obrasConAtraso = obrasCandidatas
@@ -105,5 +141,34 @@ export async function obtenerDashboardInterno(): Promise<DashboardInterno> {
     registradoPor: a.registradoPor ? (usuarioPorId.get(a.registradoPor) ?? null) : null,
   }));
 
-  return { obrasConAtraso, actualizacionesRecientes, pendientesAprobacion };
+  const estatusMap = new Map<string, { nombre: string; color: string; cantidad: number }>();
+  const publicacionMap = new Map<string, number>();
+  obrasParaGraficos.forEach((o) => {
+    const previo = estatusMap.get(o.estatus.nombre);
+    estatusMap.set(o.estatus.nombre, {
+      nombre: o.estatus.nombre,
+      color: o.estatus.color ?? '#6B7280',
+      cantidad: (previo?.cantidad ?? 0) + 1,
+    });
+    publicacionMap.set(o.estadoPublicacion, (publicacionMap.get(o.estadoPublicacion) ?? 0) + 1);
+  });
+
+  const obrasPorEstatus = Array.from(estatusMap.values());
+  // Orden fijo Borrador → En revisión → Publicado (el flujo real), en vez
+  // del orden de aparición en la tabla.
+  const obrasPorPublicacion = ['BORRADOR', 'EN_REVISION', 'PUBLICADO'].map((estado) => ({
+    estado,
+    etiqueta: PUBLICACION_LABEL[estado],
+    color: PUBLICACION_COLOR[estado],
+    cantidad: publicacionMap.get(estado) ?? 0,
+  }));
+
+  return {
+    obrasConAtraso,
+    actualizacionesRecientes,
+    pendientesAprobacion,
+    totales: { obras: totalObras, personas: totalPersonas, reportesPendientes },
+    obrasPorEstatus,
+    obrasPorPublicacion,
+  };
 }
