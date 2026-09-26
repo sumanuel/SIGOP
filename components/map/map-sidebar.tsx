@@ -94,7 +94,7 @@ export function MapSidebar({
 
   return (
     <aside
-      className={`${abiertoEnMovil ? 'flex' : 'hidden'} fixed inset-0 z-30 w-full flex-col gap-6 overflow-y-auto bg-gradient-to-b from-primary/[0.05] via-background to-background p-4 sm:static sm:z-auto sm:flex sm:w-72 sm:shrink-0 sm:border-r sm:border-primary/10`}
+      className={`${abiertoEnMovil ? 'flex' : 'hidden'} fixed inset-0 z-30 w-full flex-col gap-6 overflow-y-auto bg-background bg-gradient-to-b from-primary/[0.05] via-background to-background p-4 sm:static sm:z-auto sm:flex sm:w-72 sm:shrink-0 sm:border-r sm:border-primary/10`}
     >
       <div className="flex items-center justify-between sm:hidden">
         <h2 className="text-base font-semibold">Buscar y filtrar</h2>
