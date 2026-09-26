@@ -29,6 +29,13 @@ export const crearObraSchema = z.object({
   lat: z.number().min(-90).max(90),
   lng: z.number().min(-180).max(180),
 
+  // Solo para obras lineales (vías, tuberías, tendidos eléctricos). Se
+  // guarda como LINESTRING vía `guardarTrazado()` en obras.service.ts.
+  trazado: z
+    .array(z.tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)]))
+    .min(2)
+    .optional(),
+
   presupuestoAprobado: z.number().nonnegative().default(0),
   montoEjecutado: z.number().nonnegative().default(0),
   moneda: z.string().max(10).default('VES'),
@@ -49,6 +56,12 @@ export type CrearObraInput = z.infer<typeof crearObraSchema>;
 // publicación (parte del flujo Borrador → En revisión → Publicado).
 export const actualizarObraSchema = crearObraSchema.partial().extend({
   estadoPublicacion: z.enum(['BORRADOR', 'EN_REVISION', 'PUBLICADO']).optional(),
+  // `null` explícito permite "quitar" el trazado (la obra dejó de ser lineal).
+  trazado: z
+    .array(z.tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)]))
+    .min(2)
+    .nullable()
+    .optional(),
 });
 
 export type ActualizarObraInput = z.infer<typeof actualizarObraSchema>;

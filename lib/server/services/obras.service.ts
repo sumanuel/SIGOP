@@ -24,6 +24,7 @@ interface FilaObraMapa {
   estatusNombre: string;
   estatusColor: string | null;
   geojson: { coordinates: [number, number] } | null;
+  trazadoGeojson: { type: string; coordinates: [number, number][] } | null;
 }
 
 /** Obras publicadas con su ubicación, listas para pintar en el mapa. */
@@ -44,7 +45,8 @@ export async function listarObrasParaMapa(): Promise<ObraMapa[]> {
       t.icono AS "tipoObraIcono",
       e.nombre AS "estatusNombre",
       e.color AS "estatusColor",
-      ST_AsGeoJSON(o.ubicacion)::json AS geojson
+      ST_AsGeoJSON(o.ubicacion)::json AS geojson,
+      ST_AsGeoJSON(o.trazado)::json AS "trazadoGeojson"
     FROM obras o
     JOIN tipos_obra t ON t.id = o."tipoObraId"
     JOIN estatus_obra e ON e.id = o."estatusId"
@@ -80,7 +82,22 @@ export async function listarObrasParaMapa(): Promise<ObraMapa[]> {
       },
       lng: fila.geojson.coordinates[0],
       lat: fila.geojson.coordinates[1],
+      trazado: extraerTrazado(fila.trazadoGeojson),
     }));
+}
+
+/**
+ * Solo soporta LineString (una vía/tubería con un único trazado continuo).
+ * Si en el futuro hace falta una obra con varios segmentos separados,
+ * `trazado` es `geometry(Geometry, 4326)` en el schema — sin restricción de
+ * subtipo — así que MultiLineString ya cabría en la base sin migrar nada;
+ * solo faltaría manejarlo aquí y en el picker del admin.
+ */
+function extraerTrazado(
+  geojson: { type: string; coordinates: [number, number][] } | null
+): [number, number][] | null {
+  if (!geojson || geojson.type !== 'LineString') return null;
+  return geojson.coordinates;
 }
 
 /** Listado para la tabla del panel admin: todas las obras, cualquier estado de publicación. */
@@ -141,10 +158,19 @@ export async function obtenerObraDetalle(idOrSlug: string, opts: ObtenerObraDeta
   if (!obra) return null;
   if (opts.soloPublicado && obra.estadoPublicacion !== 'PUBLICADO') return null;
 
-  const [ubicacionRow] = await prisma.$queryRaw<{ geojson: { coordinates: [number, number] } | null }[]>`
-    SELECT ST_AsGeoJSON(ubicacion)::json AS geojson FROM obras WHERE id = ${obra.id}
+  const [geoRow] = await prisma.$queryRaw<
+    {
+      geojson: { coordinates: [number, number] } | null;
+      trazadoGeojson: { type: string; coordinates: [number, number][] } | null;
+    }[]
+  >`
+    SELECT
+      ST_AsGeoJSON(ubicacion)::json AS geojson,
+      ST_AsGeoJSON(trazado)::json AS "trazadoGeojson"
+    FROM obras WHERE id = ${obra.id}
   `;
-  const coords = ubicacionRow?.geojson?.coordinates;
+  const coords = geoRow?.geojson?.coordinates;
+  const trazado = extraerTrazado(geoRow?.trazadoGeojson ?? null);
 
   const personal = obra.personal
     .filter((asignacion) => asignacion.visiblePublico || !opts.soloPublicado)
@@ -180,7 +206,24 @@ export async function obtenerObraDetalle(idOrSlug: string, opts: ObtenerObraDeta
     personal,
     lat: coords?.[1] ?? null,
     lng: coords?.[0] ?? null,
+    trazado,
   };
+}
+
+/**
+ * Guarda el trazado de una obra lineal como un WKT `LINESTRING(...)`. Los
+ * puntos ya vienen validados como números por Zod (`crearObraSchema`), así
+ * que interpolarlos en el WKT es seguro — Prisma sigue parametrizando el
+ * WKT completo como texto; PostGIS es quien lo interpreta del lado del
+ * servidor con `ST_GeomFromText`.
+ */
+async function guardarTrazado(obraId: string, puntos: [number, number][]) {
+  const wkt = `LINESTRING(${puntos.map(([lng, lat]) => `${lng} ${lat}`).join(', ')})`;
+  await prisma.$executeRaw`
+    UPDATE obras
+    SET trazado = ST_SetSRID(ST_GeomFromText(${wkt}), 4326)
+    WHERE id = ${obraId}
+  `;
 }
 
 interface CrearObraContext {
@@ -226,6 +269,10 @@ export async function crearObra(data: CrearObraInput, ctx: CrearObraContext) {
     WHERE id = ${obra.id}
   `;
 
+  if (data.trazado && data.trazado.length >= 2) {
+    await guardarTrazado(obra.id, data.trazado);
+  }
+
   await registrarAuditoria({
     usuarioId: ctx.usuarioId,
     accion: 'CREATE',
@@ -245,7 +292,7 @@ export async function actualizarObra(id: string, data: ActualizarObraInput, ctx:
   const obraAntes = await prisma.obra.findUnique({ where: { id } });
   if (!obraAntes) return null;
 
-  const { lat, lng, ...campos } = data;
+  const { lat, lng, trazado, ...campos } = data;
 
   const obra = await prisma.obra.update({
     where: { id },
@@ -265,6 +312,15 @@ export async function actualizarObra(id: string, data: ActualizarObraInput, ctx:
       SET ubicacion = ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)
       WHERE id = ${obra.id}
     `;
+  }
+
+  if (trazado !== undefined) {
+    if (trazado === null || trazado.length < 2) {
+      // Se permite "quitar" el trazado (ej. la obra dejó de ser lineal).
+      await prisma.$executeRaw`UPDATE obras SET trazado = NULL WHERE id = ${obra.id}`;
+    } else {
+      await guardarTrazado(obra.id, trazado);
+    }
   }
 
   await registrarAuditoria({

@@ -3,6 +3,7 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import UbicacionPickerLoader from '@/components/admin/ubicacion-picker-loader';
+import TrazadoPickerLoader from '@/components/admin/trazado-picker-loader';
 import { slugify } from '@/lib/slugify';
 import type { Catalogos } from '@/lib/server/services/catalogos.service';
 
@@ -22,6 +23,8 @@ interface ObraFormValues {
   direccion: string;
   lat: number | null;
   lng: number | null;
+  tieneTrazado: boolean;
+  trazado: [number, number][];
   presupuestoAprobado: number;
   montoEjecutado: number;
   moneda: string;
@@ -51,6 +54,8 @@ const VALORES_VACIOS: ObraFormValues = {
   direccion: '',
   lat: null,
   lng: null,
+  tieneTrazado: false,
+  trazado: [],
   presupuestoAprobado: 0,
   montoEjecutado: 0,
   moneda: 'VES',
@@ -117,6 +122,11 @@ export function ObraForm({ catalogos, obraId, valoresIniciales }: ObraFormProps)
       return;
     }
 
+    if (valores.tieneTrazado && valores.trazado.length < 2) {
+      setError('Dibuja el trazado en el mapa (al menos 2 puntos) o desmarca la opción de obra lineal.');
+      return;
+    }
+
     setEnviando(true);
 
     const isoOUndefined = (fecha: string) => (fecha ? new Date(fecha).toISOString() : undefined);
@@ -137,6 +147,7 @@ export function ObraForm({ catalogos, obraId, valoresIniciales }: ObraFormProps)
       direccion: valores.direccion || undefined,
       lat: valores.lat,
       lng: valores.lng,
+      trazado: valores.tieneTrazado && valores.trazado.length >= 2 ? valores.trazado : esEdicion ? null : undefined,
       presupuestoAprobado: valores.presupuestoAprobado,
       montoEjecutado: valores.montoEjecutado,
       moneda: valores.moneda,
@@ -371,6 +382,52 @@ export function ObraForm({ catalogos, obraId, valoresIniciales }: ObraFormProps)
               ? `Lat ${valores.lat.toFixed(5)}, Lng ${valores.lng.toFixed(5)}`
               : 'Sin ubicación seleccionada todavía.'}
           </p>
+        </div>
+
+        <div className="col-span-full flex flex-col gap-2">
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <input
+              type="checkbox"
+              checked={valores.tieneTrazado}
+              onChange={(e) => actualizar('tieneTrazado', e.target.checked)}
+              className="size-4 rounded border-input"
+            />
+            ¿Esta obra tiene trazado? (vía, tubería, tendido eléctrico)
+          </label>
+
+          {valores.tieneTrazado && (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Haz clic en el mapa para ir agregando puntos del trazado, en orden.
+              </p>
+              <div className="h-72 w-full overflow-hidden rounded-lg border border-border">
+                <TrazadoPickerLoader
+                  puntos={valores.trazado}
+                  centro={valores.lat !== null && valores.lng !== null ? [valores.lng, valores.lat] : null}
+                  onCambiar={(trazado) => actualizar('trazado', trazado)}
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => actualizar('trazado', valores.trazado.slice(0, -1))}
+                  disabled={valores.trazado.length === 0}
+                  className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-50"
+                >
+                  Deshacer último punto
+                </button>
+                <button
+                  type="button"
+                  onClick={() => actualizar('trazado', [])}
+                  disabled={valores.trazado.length === 0}
+                  className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-50"
+                >
+                  Limpiar trazado
+                </button>
+                <p className="text-xs text-muted-foreground">{valores.trazado.length} punto(s)</p>
+              </div>
+            </>
+          )}
         </div>
       </Seccion>
 

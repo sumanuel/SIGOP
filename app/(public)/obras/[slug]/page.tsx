@@ -76,6 +76,7 @@ export default async function ObraFichaPage({ params }: PageProps) {
           municipio: obra.municipio.nombre,
           lat: obra.lat,
           lng: obra.lng,
+          trazado: obra.trazado,
         }
       : null;
 

@@ -106,6 +106,7 @@ export default function ObrasMap({ obras, onSeleccionarObra }: ObrasMapProps) {
     function renderizarAhora() {
       if (!mapa) return;
       renderizarClusters(mapa, indiceRef.current, obrasPorIdRef.current, marcadoresRef, onSeleccionarObraRef);
+      sincronizarTrazados(mapa, obras);
     }
 
     if (mapa.isStyleLoaded()) {
@@ -205,6 +206,44 @@ function esCluster(
   feature: PointFeature<PropiedadesPunto> | ClusterFeature<PropiedadesPunto>
 ): feature is ClusterFeature<PropiedadesPunto> {
   return 'cluster' in feature.properties && feature.properties.cluster === true;
+}
+
+// Trazado de obras lineales (vías, tuberías, tendidos eléctricos): a
+// diferencia de los marcadores, se dibuja con una capa GL nativa (fuente
+// GeoJSON + `line` layer) en vez de elementos DOM, porque una línea no
+// necesita popup/interacción propia y así se aprovecha el renderizado
+// vectorial del mapa. No depende del viewport, así que solo se sincroniza
+// cuando cambia la lista de obras (no en cada `moveend`).
+function construirFeatureCollectionTrazados(obras: ObraMapa[]) {
+  return {
+    type: 'FeatureCollection' as const,
+    features: obras
+      .filter((o): o is ObraMapa & { trazado: [number, number][] } => Boolean(o.trazado && o.trazado.length >= 2))
+      .map((o) => ({
+        type: 'Feature' as const,
+        properties: { color: o.tipoObra.color },
+        geometry: { type: 'LineString' as const, coordinates: o.trazado },
+      })),
+  };
+}
+
+function sincronizarTrazados(mapa: maplibregl.Map, obras: ObraMapa[]) {
+  const data = construirFeatureCollectionTrazados(obras);
+  const fuente = mapa.getSource('trazados') as maplibregl.GeoJSONSource | undefined;
+
+  if (fuente) {
+    fuente.setData(data);
+    return;
+  }
+
+  mapa.addSource('trazados', { type: 'geojson', data });
+  mapa.addLayer({
+    id: 'trazados-line',
+    type: 'line',
+    source: 'trazados',
+    layout: { 'line-join': 'round', 'line-cap': 'round' },
+    paint: { 'line-color': ['get', 'color'], 'line-width': 4, 'line-opacity': 0.85 },
+  });
 }
 
 function crearElementoCluster(cantidad: number): HTMLButtonElement {

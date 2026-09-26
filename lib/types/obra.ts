@@ -24,4 +24,6 @@ export interface ObraMapa {
   municipio: string;
   lat: number;
   lng: number;
+  /** Solo para obras lineales (vías, tuberías, tendidos). `null` si la obra es puntual. */
+  trazado: [number, number][] | null;
 }

@@ -23,6 +23,7 @@ export const OBRAS_DEMO: ObraMapa[] = [
     municipio: 'Libertador',
     lat: 10.488,
     lng: -66.8791,
+    trazado: null,
   },
   {
     id: '2',
@@ -38,6 +39,7 @@ export const OBRAS_DEMO: ObraMapa[] = [
     municipio: 'Chacao',
     lat: 10.4989,
     lng: -66.8534,
+    trazado: null,
   },
   {
     id: '3',
@@ -53,6 +55,7 @@ export const OBRAS_DEMO: ObraMapa[] = [
     municipio: 'El Hatillo',
     lat: 10.3897,
     lng: -66.8317,
+    trazado: null,
   },
   {
     id: '4',
@@ -68,6 +71,7 @@ export const OBRAS_DEMO: ObraMapa[] = [
     municipio: 'Sucre',
     lat: 10.4944,
     lng: -66.8464,
+    trazado: null,
   },
   {
     id: '5',
@@ -83,5 +87,12 @@ export const OBRAS_DEMO: ObraMapa[] = [
     municipio: 'Baruta',
     lat: 10.4931,
     lng: -66.8558,
+    trazado: [
+      [-66.8674, 10.4978],
+      [-66.8621, 10.4959],
+      [-66.8558, 10.4931],
+      [-66.8497, 10.4903],
+      [-66.8441, 10.4878],
+    ],
   },
 ];
