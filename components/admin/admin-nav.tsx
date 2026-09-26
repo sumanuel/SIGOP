@@ -9,6 +9,7 @@ const ENLACES = [
   { href: '/admin/personas', label: 'Personas' },
   { href: '/admin/reportes', label: 'Reportes' },
   { href: '/admin/auditoria', label: 'Auditoría' },
+  { href: '/admin/catalogos', label: 'Catálogos' },
 ];
 
 export function AdminNav() {
