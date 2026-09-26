@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { SlidersHorizontal } from 'lucide-react';
 import ObrasMapLoader from '@/components/map/obras-map-loader';
 import { MapSidebar, claveAnio, type Vista } from '@/components/map/map-sidebar';
 import { ObrasLista } from '@/components/map/obras-lista';
@@ -23,6 +24,7 @@ export default function MapaPage() {
   const [modoDemo, setModoDemo] = useState(false);
   const [obraSeleccionada, setObraSeleccionada] = useState<ObraMapa | null>(null);
   const [vista, setVista] = useState<Vista>('mapa');
+  const [filtrosAbiertosEnMovil, setFiltrosAbiertosEnMovil] = useState(false);
 
   const [busqueda, setBusqueda] = useState('');
   const [tiposActivos, setTiposActivos] = useState<Set<string>>(new Set());
@@ -119,7 +121,10 @@ export default function MapaPage() {
         busqueda={busqueda}
         onCambiarBusqueda={setBusqueda}
         vista={vista}
-        onCambiarVista={setVista}
+        onCambiarVista={(v) => {
+          setVista(v);
+          setFiltrosAbiertosEnMovil(false);
+        }}
         tiposActivos={tiposActivos}
         onCambiarTipos={setTiposActivos}
         estadosActivos={estadosActivos}
@@ -135,6 +140,8 @@ export default function MapaPage() {
         rangoPresupuesto={rangoPresupuesto}
         limitesPresupuesto={limitesPresupuesto}
         onCambiarRangoPresupuesto={setRangoPresupuesto}
+        abiertoEnMovil={filtrosAbiertosEnMovil}
+        onCerrarEnMovil={() => setFiltrosAbiertosEnMovil(false)}
       />
 
       <div className="relative flex-1">
@@ -143,6 +150,19 @@ export default function MapaPage() {
         ) : (
           <ObrasLista obras={obrasFiltradas} onSeleccionar={setObraSeleccionada} />
         )}
+
+        {/* En escritorio los filtros ya están siempre visibles en el sidebar
+            — este botón flotante es el único camino a buscador/filtros/vista
+            de lista en pantallas angostas, donde el sidebar es un drawer
+            oculto por defecto (ver MapSidebar). */}
+        <button
+          type="button"
+          onClick={() => setFiltrosAbiertosEnMovil(true)}
+          className="absolute bottom-5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-lg sm:hidden"
+        >
+          <SlidersHorizontal className="size-4" />
+          Buscar y filtrar
+        </button>
 
         {estado === 'cargando' && (
           <div className="absolute inset-x-0 top-4 mx-auto w-fit rounded-full bg-background/90 px-3 py-1 text-xs text-muted-foreground shadow">

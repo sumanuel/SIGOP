@@ -1,4 +1,4 @@
-import { Map as MapIcon, List, Search, Building2, CheckCircle2, TrendingUp, type LucideIcon } from 'lucide-react';
+import { Map as MapIcon, List, Search, Building2, CheckCircle2, TrendingUp, X, type LucideIcon } from 'lucide-react';
 import type { ObraMapa } from '@/lib/types/obra';
 import { formatearMoneda } from '@/lib/format';
 import { FiltroDesplegable, type FiltroItem } from '@/components/map/filtro-desplegable';
@@ -29,6 +29,11 @@ interface MapSidebarProps {
   rangoPresupuesto: [number, number];
   limitesPresupuesto: [number, number];
   onCambiarRangoPresupuesto: (rango: [number, number]) => void;
+  /** En mobile el panel es un drawer a pantalla completa, oculto por
+   * defecto (ver el botón flotante "Buscar y filtrar" en la página del
+   * mapa) — en escritorio siempre está visible y estas props no aplican. */
+  abiertoEnMovil: boolean;
+  onCerrarEnMovil: () => void;
 }
 
 /** "2025" o, para obras sin fecha de aprobación, el bucket "Sin fecha". */
@@ -63,6 +68,8 @@ export function MapSidebar({
   rangoPresupuesto,
   limitesPresupuesto,
   onCambiarRangoPresupuesto,
+  abiertoEnMovil,
+  onCerrarEnMovil,
 }: MapSidebarProps) {
   const totalObras = obrasFiltradas.length;
   const culminadas = obrasFiltradas.filter(
@@ -86,7 +93,21 @@ export function MapSidebar({
   );
 
   return (
-    <aside className="hidden w-72 shrink-0 flex-col gap-6 overflow-y-auto border-r border-primary/10 bg-gradient-to-b from-primary/[0.05] via-background to-background p-4 sm:flex">
+    <aside
+      className={`${abiertoEnMovil ? 'flex' : 'hidden'} fixed inset-0 z-30 w-full flex-col gap-6 overflow-y-auto bg-gradient-to-b from-primary/[0.05] via-background to-background p-4 sm:static sm:z-auto sm:flex sm:w-72 sm:shrink-0 sm:border-r sm:border-primary/10`}
+    >
+      <div className="flex items-center justify-between sm:hidden">
+        <h2 className="text-base font-semibold">Buscar y filtrar</h2>
+        <button
+          type="button"
+          onClick={onCerrarEnMovil}
+          aria-label="Cerrar filtros"
+          className="rounded-md p-1.5 text-foreground hover:bg-primary/10"
+        >
+          <X className="size-5" />
+        </button>
+      </div>
+
       <label className="relative">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <input
