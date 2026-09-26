@@ -18,6 +18,7 @@ export interface ObraMapa {
     color: string;
   };
   avanceFisico: number;
+  estado: string;
   municipio: string;
   lat: number;
   lng: number;

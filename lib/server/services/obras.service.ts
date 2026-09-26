@@ -14,6 +14,7 @@ interface FilaObraMapa {
   slug: string;
   nombre: string;
   avanceFisico: number;
+  estado: string;
   municipio: string;
   tipoObraNombre: string;
   tipoObraColor: string | null;
@@ -32,6 +33,7 @@ export async function listarObrasParaMapa(): Promise<ObraMapa[]> {
       o.slug,
       o.nombre,
       o."avanceFisico" AS "avanceFisico",
+      es.nombre AS estado,
       m.nombre AS municipio,
       t.nombre AS "tipoObraNombre",
       t.color AS "tipoObraColor",
@@ -43,6 +45,7 @@ export async function listarObrasParaMapa(): Promise<ObraMapa[]> {
     JOIN tipos_obra t ON t.id = o."tipoObraId"
     JOIN estatus_obra e ON e.id = o."estatusId"
     JOIN municipios m ON m.id = o."municipioId"
+    JOIN estados es ON es.id = o."estadoId"
     WHERE o."estadoPublicacion" = 'PUBLICADO'
       AND o.ubicacion IS NOT NULL
     ORDER BY o."createdAt" DESC
@@ -58,6 +61,7 @@ export async function listarObrasParaMapa(): Promise<ObraMapa[]> {
       slug: fila.slug,
       nombre: fila.nombre,
       avanceFisico: fila.avanceFisico,
+      estado: fila.estado,
       municipio: fila.municipio,
       tipoObra: {
         nombre: fila.tipoObraNombre,

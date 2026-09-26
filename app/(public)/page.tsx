@@ -15,12 +15,14 @@ export default function MapaPage() {
   const [modoDemo, setModoDemo] = useState(false);
   const [obraSeleccionada, setObraSeleccionada] = useState<ObraMapa | null>(null);
   const [tiposActivos, setTiposActivos] = useState<Set<string>>(new Set());
+  const [estadosActivos, setEstadosActivos] = useState<Set<string>>(new Set());
 
-  // Guarda las obras y, en el mismo paso, activa todos sus tipos en el
-  // filtro (evita un segundo efecto encadenado solo para derivar esto).
+  // Guarda las obras y, en el mismo paso, activa todos sus tipos y estados en
+  // los filtros (evita un segundo efecto encadenado solo para derivar esto).
   function aplicarObras(nuevas: ObraMapa[]) {
     setObras(nuevas);
     setTiposActivos(new Set(nuevas.map((o) => o.tipoObra.nombre)));
+    setEstadosActivos(new Set(nuevas.map((o) => o.estado)));
   }
 
   useEffect(() => {
@@ -64,19 +66,19 @@ export default function MapaPage() {
     };
   }, []);
 
-  function toggleTipo(tipo: string) {
-    setTiposActivos((prev) => {
-      const next = new Set(prev);
-      if (next.has(tipo)) {
-        next.delete(tipo);
-      } else {
-        next.add(tipo);
-      }
-      return next;
-    });
+  function alternarEnSet(set: Set<string>, valor: string): Set<string> {
+    const next = new Set(set);
+    if (next.has(valor)) {
+      next.delete(valor);
+    } else {
+      next.add(valor);
+    }
+    return next;
   }
 
-  const obrasFiltradas = obras.filter((o) => tiposActivos.has(o.tipoObra.nombre));
+  const obrasFiltradas = obras.filter(
+    (o) => tiposActivos.has(o.tipoObra.nombre) && estadosActivos.has(o.estado)
+  );
 
   return (
     <div className="absolute inset-0 flex">
@@ -84,7 +86,9 @@ export default function MapaPage() {
         obras={obras}
         obrasFiltradas={obrasFiltradas}
         tiposActivos={tiposActivos}
-        onToggleTipo={toggleTipo}
+        onToggleTipo={(tipo) => setTiposActivos((prev) => alternarEnSet(prev, tipo))}
+        estadosActivos={estadosActivos}
+        onToggleEstado={(estadoNombre) => setEstadosActivos((prev) => alternarEnSet(prev, estadoNombre))}
       />
 
       <div className="relative flex-1">
