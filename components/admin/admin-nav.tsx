@@ -8,6 +8,7 @@ const ENLACES = [
   { href: '/admin/obras', label: 'Obras' },
   { href: '/admin/personas', label: 'Personas' },
   { href: '/admin/reportes', label: 'Reportes' },
+  { href: '/admin/auditoria', label: 'Auditoría' },
 ];
 
 export function AdminNav() {
