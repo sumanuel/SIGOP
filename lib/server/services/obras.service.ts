@@ -14,6 +14,7 @@ interface FilaObraMapa {
   slug: string;
   nombre: string;
   avanceFisico: number;
+  presupuestoAprobado: number;
   estado: string;
   municipio: string;
   tipoObraNombre: string;
@@ -33,6 +34,7 @@ export async function listarObrasParaMapa(): Promise<ObraMapa[]> {
       o.slug,
       o.nombre,
       o."avanceFisico" AS "avanceFisico",
+      o."presupuestoAprobado"::float AS "presupuestoAprobado",
       es.nombre AS estado,
       m.nombre AS municipio,
       t.nombre AS "tipoObraNombre",
@@ -61,6 +63,7 @@ export async function listarObrasParaMapa(): Promise<ObraMapa[]> {
       slug: fila.slug,
       nombre: fila.nombre,
       avanceFisico: fila.avanceFisico,
+      presupuestoAprobado: fila.presupuestoAprobado,
       estado: fila.estado,
       municipio: fila.municipio,
       tipoObra: {

@@ -5,25 +5,44 @@ import ObrasMapLoader from '@/components/map/obras-map-loader';
 import { MapSidebar } from '@/components/map/map-sidebar';
 import { ObraDetallePanel } from '@/components/map/obra-detalle-panel';
 import { OBRAS_DEMO } from '@/lib/data/obras-demo';
+import { normalizarTexto } from '@/lib/texto';
 import type { ObraMapa } from '@/lib/types/obra';
 
 type EstadoCarga = 'cargando' | 'ok' | 'error';
+
+function calcularLimitesPresupuesto(obras: ObraMapa[]): [number, number] {
+  if (obras.length === 0) return [0, 0];
+  const montos = obras.map((o) => o.presupuestoAprobado);
+  return [Math.min(...montos), Math.max(...montos)];
+}
 
 export default function MapaPage() {
   const [obras, setObras] = useState<ObraMapa[]>([]);
   const [estado, setEstado] = useState<EstadoCarga>('cargando');
   const [modoDemo, setModoDemo] = useState(false);
   const [obraSeleccionada, setObraSeleccionada] = useState<ObraMapa | null>(null);
+
+  const [busqueda, setBusqueda] = useState('');
   const [tiposActivos, setTiposActivos] = useState<Set<string>>(new Set());
   const [estadosActivos, setEstadosActivos] = useState<Set<string>>(new Set());
+  const [municipiosActivos, setMunicipiosActivos] = useState<Set<string>>(new Set());
+  const [estatusActivos, setEstatusActivos] = useState<Set<string>>(new Set());
   const [rangoAvance, setRangoAvance] = useState<[number, number]>([0, 100]);
+  const [rangoPresupuesto, setRangoPresupuesto] = useState<[number, number]>([0, 0]);
+  const [limitesPresupuesto, setLimitesPresupuesto] = useState<[number, number]>([0, 0]);
 
-  // Guarda las obras y, en el mismo paso, activa todos sus tipos y estados en
-  // los filtros (evita un segundo efecto encadenado solo para derivar esto).
+  // Guarda las obras y, en el mismo paso, activa todos sus valores en cada
+  // filtro (evita un segundo efecto encadenado solo para derivar esto).
   function aplicarObras(nuevas: ObraMapa[]) {
     setObras(nuevas);
     setTiposActivos(new Set(nuevas.map((o) => o.tipoObra.nombre)));
     setEstadosActivos(new Set(nuevas.map((o) => o.estado)));
+    setMunicipiosActivos(new Set(nuevas.map((o) => o.municipio)));
+    setEstatusActivos(new Set(nuevas.map((o) => o.estatus.nombre)));
+
+    const limites = calcularLimitesPresupuesto(nuevas);
+    setLimitesPresupuesto(limites);
+    setRangoPresupuesto(limites);
   }
 
   useEffect(() => {
@@ -77,25 +96,46 @@ export default function MapaPage() {
     return next;
   }
 
-  const obrasFiltradas = obras.filter(
-    (o) =>
-      tiposActivos.has(o.tipoObra.nombre) &&
-      estadosActivos.has(o.estado) &&
-      o.avanceFisico >= rangoAvance[0] &&
-      o.avanceFisico <= rangoAvance[1]
-  );
+  const busquedaNormalizada = normalizarTexto(busqueda);
+
+  const obrasFiltradas = obras.filter((o) => {
+    if (!tiposActivos.has(o.tipoObra.nombre)) return false;
+    if (!estadosActivos.has(o.estado)) return false;
+    if (!municipiosActivos.has(o.municipio)) return false;
+    if (!estatusActivos.has(o.estatus.nombre)) return false;
+    if (o.avanceFisico < rangoAvance[0] || o.avanceFisico > rangoAvance[1]) return false;
+    if (o.presupuestoAprobado < rangoPresupuesto[0] || o.presupuestoAprobado > rangoPresupuesto[1]) {
+      return false;
+    }
+    if (busquedaNormalizada) {
+      const coincide =
+        normalizarTexto(o.nombre).includes(busquedaNormalizada) ||
+        normalizarTexto(o.codigo).includes(busquedaNormalizada);
+      if (!coincide) return false;
+    }
+    return true;
+  });
 
   return (
     <div className="absolute inset-0 flex">
       <MapSidebar
         obras={obras}
         obrasFiltradas={obrasFiltradas}
+        busqueda={busqueda}
+        onCambiarBusqueda={setBusqueda}
         tiposActivos={tiposActivos}
         onToggleTipo={(tipo) => setTiposActivos((prev) => alternarEnSet(prev, tipo))}
         estadosActivos={estadosActivos}
         onToggleEstado={(estadoNombre) => setEstadosActivos((prev) => alternarEnSet(prev, estadoNombre))}
+        municipiosActivos={municipiosActivos}
+        onToggleMunicipio={(municipio) => setMunicipiosActivos((prev) => alternarEnSet(prev, municipio))}
+        estatusActivos={estatusActivos}
+        onToggleEstatus={(estatusNombre) => setEstatusActivos((prev) => alternarEnSet(prev, estatusNombre))}
         rangoAvance={rangoAvance}
         onCambiarRangoAvance={setRangoAvance}
+        rangoPresupuesto={rangoPresupuesto}
+        limitesPresupuesto={limitesPresupuesto}
+        onCambiarRangoPresupuesto={setRangoPresupuesto}
       />
 
       <div className="relative flex-1">
