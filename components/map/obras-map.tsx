@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { createElement, useEffect, useRef } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import Supercluster, { type ClusterFeature, type PointFeature } from 'supercluster';
 import type { ObraMapa } from '@/lib/types/obra';
 import { OSM_STYLE, CENTRO_VENEZUELA, ZOOM_INICIAL } from '@/lib/map-style';
+import { obtenerIconoTipoObra } from '@/lib/tipo-obra-icono';
 
 interface ObrasMapProps {
   obras: ObraMapa[];
@@ -168,14 +170,22 @@ function renderizarClusters(
 
     const el = document.createElement('button');
     el.type = 'button';
-    el.setAttribute('aria-label', `${obra.nombre} — ${obra.estatus.nombre}`);
-    el.style.width = '18px';
-    el.style.height = '18px';
+    el.setAttribute('aria-label', `${obra.nombre} — ${obra.tipoObra.nombre} — ${obra.estatus.nombre}`);
+    el.style.width = '28px';
+    el.style.height = '28px';
+    el.style.display = 'flex';
+    el.style.alignItems = 'center';
+    el.style.justifyContent = 'center';
     el.style.borderRadius = '9999px';
     el.style.border = '2px solid white';
     el.style.boxShadow = '0 1px 4px rgba(0,0,0,0.4)';
     el.style.backgroundColor = obra.tipoObra.color;
     el.style.cursor = 'pointer';
+
+    const Icono = obtenerIconoTipoObra(obra.tipoObra.icono);
+    el.innerHTML = renderToStaticMarkup(
+      createElement(Icono, { color: 'white', size: 15, strokeWidth: 2.5 })
+    );
 
     const popup = new maplibregl.Popup({ offset: 14, closeButton: false }).setHTML(`
       <div style="font-family: inherit; min-width: 200px;">
