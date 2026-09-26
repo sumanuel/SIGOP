@@ -39,12 +39,26 @@ export default async function EditarObraPage({ params }: PageProps) {
           <h1 className="text-2xl font-semibold">Editar obra</h1>
           <p className="mt-1 text-sm text-muted-foreground">{obra.nombre}</p>
         </div>
-        <Link
-          href={`/admin/obras/${obra.id}/personal`}
-          className="rounded-md border border-border px-3 py-2 text-sm hover:bg-muted"
-        >
-          Gestionar personal
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            href={`/admin/obras/${obra.id}/avances`}
+            className="rounded-md border border-border px-3 py-2 text-sm hover:bg-muted"
+          >
+            Avances
+          </Link>
+          <Link
+            href={`/admin/obras/${obra.id}/galeria`}
+            className="rounded-md border border-border px-3 py-2 text-sm hover:bg-muted"
+          >
+            Galería
+          </Link>
+          <Link
+            href={`/admin/obras/${obra.id}/personal`}
+            className="rounded-md border border-border px-3 py-2 text-sm hover:bg-muted"
+          >
+            Personal
+          </Link>
+        </div>
       </div>
 
       <div className="mt-6">

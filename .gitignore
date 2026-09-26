@@ -42,9 +42,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# uploads (imágenes de obras) — no versionar el contenido subido
-/uploads/*
-!/uploads/.gitkeep
+# uploads (imágenes de obras) — no versionar el contenido subido.
+# Dentro de public/ porque solo lo que vive ahí es servible por Next.js
+# (una carpeta /uploads en la raíz del proyecto NO se sirve en la web).
+/public/uploads/*
+!/public/uploads/.gitkeep
 
 # prisma
 /prisma/migrations/dev.db
