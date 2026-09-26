@@ -7,6 +7,23 @@ function codigoPrisma(error: unknown): string | null {
   return null;
 }
 
+/** Prisma incluye en `meta.target` el/los campo(s) del @unique violado. */
+function campoConflictoPrisma(error: unknown): string | null {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'meta' in error &&
+    typeof error.meta === 'object' &&
+    error.meta !== null &&
+    'target' in error.meta
+  ) {
+    const target = (error.meta as { target: unknown }).target;
+    if (Array.isArray(target)) return target.join(', ');
+    if (typeof target === 'string') return target;
+  }
+  return null;
+}
+
 /**
  * Traduce los códigos de error de Prisma más comunes en un CRUD a una
  * respuesta HTTP legible, para no repetir el mismo `if` en cada Route
@@ -17,7 +34,11 @@ export function respuestaErrorPrisma(error: unknown, etiqueta: string): NextResp
   const codigo = codigoPrisma(error);
 
   if (codigo === 'P2002') {
-    return NextResponse.json({ error: `Ya existe ${etiqueta} con ese nombre.` }, { status: 409 });
+    const campo = campoConflictoPrisma(error);
+    return NextResponse.json(
+      { error: `Ya existe ${etiqueta} con ese${campo ? ` ${campo}` : ' nombre'}.` },
+      { status: 409 }
+    );
   }
   if (codigo === 'P2003' || codigo === 'P2014') {
     return NextResponse.json(

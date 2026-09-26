@@ -21,32 +21,31 @@ interface RouteParams {
 // este es el de gestión, reservado a SUPER_ADMIN — ver PLAN_PROYECTO.md
 // sección 3.2, tabla de roles.
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  const { recurso } = await params;
-  if (!esRecursoCatalogo(recurso)) {
-    return NextResponse.json({ error: 'Catálogo no reconocido' }, { status: 404 });
-  }
-
   try {
     requireAuth(request, ['SUPER_ADMIN']);
+    const { recurso } = await params;
+    if (!esRecursoCatalogo(recurso)) {
+      return NextResponse.json({ error: 'Catálogo no reconocido' }, { status: 404 });
+    }
     const registros = await listarRegistrosCatalogo(recurso);
     return NextResponse.json({ registros });
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
-    console.error(`Error listando el catálogo "${recurso}":`, error);
+    console.error('Error listando un catálogo:', error);
     return NextResponse.json({ error: 'No se pudo obtener el catálogo' }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
-  const { recurso } = await params;
-  if (!esRecursoCatalogo(recurso)) {
-    return NextResponse.json({ error: 'Catálogo no reconocido' }, { status: 404 });
-  }
-
+  let recurso: string | undefined;
   try {
     const usuario = requireAuth(request, ['SUPER_ADMIN']);
+    ({ recurso } = await params);
+    if (!esRecursoCatalogo(recurso)) {
+      return NextResponse.json({ error: 'Catálogo no reconocido' }, { status: 404 });
+    }
     const body = await request.json();
     const datos = obtenerSchemaCatalogo(recurso).parse(body);
     const registro = await crearRegistroCatalogo(recurso, datos, usuario.sub);
@@ -58,8 +57,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     if (error instanceof ZodError) {
       return NextResponse.json({ error: 'Datos inválidos', detalles: error.flatten() }, { status: 400 });
     }
-    const respuesta = respuestaErrorPrisma(error, etiquetaCatalogo(recurso));
-    if (respuesta) return respuesta;
+    if (recurso && esRecursoCatalogo(recurso)) {
+      const respuesta = respuestaErrorPrisma(error, etiquetaCatalogo(recurso));
+      if (respuesta) return respuesta;
+    }
     console.error(`Error creando un registro en "${recurso}":`, error);
     return NextResponse.json({ error: 'No se pudo crear el registro' }, { status: 500 });
   }

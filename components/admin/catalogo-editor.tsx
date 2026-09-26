@@ -149,6 +149,7 @@ export function CatalogoEditor({ recurso, titulo, descripcion, campos }: Catalog
       return;
     }
     setRegistros((prev) => prev.filter((r) => r.id !== registro.id));
+    if (editandoId === registro.id) setEditandoId(null);
   }
 
   return (

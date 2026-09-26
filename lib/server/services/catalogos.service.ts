@@ -60,6 +60,13 @@ type DelegadoCatalogo = {
   delete: (args: { where: { id: string } }) => Promise<{ id: string }>;
 };
 
+// `campoObraEnUso`: solo se declara para los catálogos cuya FK en `Obra` es
+// `onDelete: SetNull` (contratista, fuenteFinanciamiento) — a diferencia de
+// los otros 4, que son `onDelete: Restrict` y ya hacen que Postgres rechace
+// el DELETE por sí solo (ver P2003 en prisma-error.ts). Sin este chequeo
+// explícito, borrar un contratista en uso desasignaría silenciosamente esa
+// obra en vez de bloquear el borrado — inaceptable en un sistema de control
+// de obras públicas.
 const RECURSOS_CATALOGO = {
   'tipos-obra': {
     entidadAuditoria: 'TipoObra',
@@ -67,6 +74,7 @@ const RECURSOS_CATALOGO = {
     schema: tipoObraSchema,
     delegado: prisma.tipoObra as unknown as DelegadoCatalogo,
     orderBy: { nombre: 'asc' },
+    campoObraEnUso: null,
   },
   'estatus-obra': {
     entidadAuditoria: 'EstatusObra',
@@ -74,6 +82,7 @@ const RECURSOS_CATALOGO = {
     schema: estatusObraSchema,
     delegado: prisma.estatusObra as unknown as DelegadoCatalogo,
     orderBy: { orden: 'asc' },
+    campoObraEnUso: null,
   },
   entes: {
     entidadAuditoria: 'Ente',
@@ -81,6 +90,7 @@ const RECURSOS_CATALOGO = {
     schema: enteSchema,
     delegado: prisma.ente as unknown as DelegadoCatalogo,
     orderBy: { nombre: 'asc' },
+    campoObraEnUso: null,
   },
   contratistas: {
     entidadAuditoria: 'Contratista',
@@ -88,6 +98,7 @@ const RECURSOS_CATALOGO = {
     schema: contratistaSchema,
     delegado: prisma.contratista as unknown as DelegadoCatalogo,
     orderBy: { razonSocial: 'asc' },
+    campoObraEnUso: 'contratistaId' as const,
   },
   'fuentes-financiamiento': {
     entidadAuditoria: 'FuenteFinanciamiento',
@@ -95,6 +106,7 @@ const RECURSOS_CATALOGO = {
     schema: fuenteFinanciamientoSchema,
     delegado: prisma.fuenteFinanciamiento as unknown as DelegadoCatalogo,
     orderBy: { nombre: 'asc' },
+    campoObraEnUso: 'fuenteFinanciamientoId' as const,
   },
   cargos: {
     entidadAuditoria: 'Cargo',
@@ -102,6 +114,7 @@ const RECURSOS_CATALOGO = {
     schema: cargoSchema,
     delegado: prisma.cargo as unknown as DelegadoCatalogo,
     orderBy: { nombre: 'asc' },
+    campoObraEnUso: null,
   },
 } as const;
 
@@ -157,8 +170,22 @@ export async function actualizarRegistroCatalogo(
   return registro;
 }
 
+/** Lanzado cuando un catálogo con FK `onDelete: SetNull` está en uso — ver
+ * el comentario sobre `campoObraEnUso` más arriba. */
+export class RegistroEnUsoError extends Error {}
+
 export async function eliminarRegistroCatalogo(recurso: RecursoCatalogo, id: string, usuarioId: string) {
   const config = RECURSOS_CATALOGO[recurso];
+
+  if (config.campoObraEnUso) {
+    const enUso = await prisma.obra.count({ where: { [config.campoObraEnUso]: id } });
+    if (enUso > 0) {
+      throw new RegistroEnUsoError(
+        `No se puede eliminar: ${config.etiqueta} está en uso por ${enUso} obra(s).`
+      );
+    }
+  }
+
   const registro = await config.delegado.delete({ where: { id } });
   await registrarAuditoria({
     usuarioId,
