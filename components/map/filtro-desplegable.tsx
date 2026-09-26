@@ -56,19 +56,19 @@ export function FiltroDesplegable({ titulo, items, activos, onCambiar }: FiltroD
       <button
         type="button"
         onClick={() => setAbierto((prev) => !prev)}
-        className="flex w-full items-center justify-between rounded-md px-1 py-1.5 text-left hover:bg-muted"
+        className="flex w-full items-center justify-between rounded-md border-l-2 border-primary/40 px-1 py-1.5 pl-2 text-left hover:bg-primary/5"
       >
-        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <span className="text-xs font-semibold uppercase tracking-wide text-foreground/70">
           {titulo}
         </span>
-        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1.5 text-xs font-medium text-primary/80">
           {todosActivos ? 'Todos' : `${activos.size} de ${items.length}`}
           <ChevronDown className={`size-3.5 transition-transform ${abierto ? 'rotate-180' : ''}`} />
         </span>
       </button>
 
       {abierto && (
-        <div className="mt-1 flex flex-col gap-2 rounded-md border border-border p-2">
+        <div className="mt-1 flex flex-col gap-2 rounded-md border border-primary/15 bg-primary/[0.03] p-2">
           {items.length > 6 && (
             <label className="relative">
               <Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />

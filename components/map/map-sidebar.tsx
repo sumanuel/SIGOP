@@ -1,4 +1,4 @@
-import { Map as MapIcon, List, Search } from 'lucide-react';
+import { Map as MapIcon, List, Search, Building2, CheckCircle2, TrendingUp, type LucideIcon } from 'lucide-react';
 import type { ObraMapa } from '@/lib/types/obra';
 import { formatearMoneda } from '@/lib/format';
 import { FiltroDesplegable, type FiltroItem } from '@/components/map/filtro-desplegable';
@@ -86,7 +86,7 @@ export function MapSidebar({
   );
 
   return (
-    <aside className="hidden w-72 shrink-0 flex-col gap-6 overflow-y-auto border-r border-border bg-background p-4 sm:flex">
+    <aside className="hidden w-72 shrink-0 flex-col gap-6 overflow-y-auto border-r border-primary/10 bg-gradient-to-b from-primary/[0.05] via-background to-background p-4 sm:flex">
       <label className="relative">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <input
@@ -98,13 +98,15 @@ export function MapSidebar({
         />
       </label>
 
-      <div className="flex rounded-md border border-border p-0.5 text-sm">
+      <div className="flex rounded-md border border-primary/20 bg-primary/5 p-0.5 text-sm">
         <button
           type="button"
           onClick={() => onCambiarVista('mapa')}
           aria-pressed={vista === 'mapa'}
-          className={`flex flex-1 items-center justify-center gap-1.5 rounded px-2 py-1.5 ${
-            vista === 'mapa' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded px-2 py-1.5 transition-colors ${
+            vista === 'mapa'
+              ? 'bg-primary text-primary-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
           }`}
         >
           <MapIcon className="size-4" /> Mapa
@@ -113,8 +115,10 @@ export function MapSidebar({
           type="button"
           onClick={() => onCambiarVista('lista')}
           aria-pressed={vista === 'lista'}
-          className={`flex flex-1 items-center justify-center gap-1.5 rounded px-2 py-1.5 ${
-            vista === 'lista' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded px-2 py-1.5 transition-colors ${
+            vista === 'lista'
+              ? 'bg-primary text-primary-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
           }`}
         >
           <List className="size-4" /> Lista
@@ -122,13 +126,28 @@ export function MapSidebar({
       </div>
 
       <section>
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <h2 className="mb-3 border-l-2 border-primary/40 pl-2 text-xs font-semibold uppercase tracking-wide text-foreground/70">
           Resumen
         </h2>
         <div className="flex flex-col gap-2">
-          <ResumenItem label="Obras registradas" valor={totalObras} />
-          <ResumenItem label="Culminadas / inauguradas" valor={culminadas} />
-          <ResumenItem label="Avance promedio" valor={`${avancePromedio}%`} />
+          <ResumenItem
+            icono={Building2}
+            label="Obras registradas"
+            valor={totalObras}
+            colorClase="border-primary/25 bg-primary/10 text-primary"
+          />
+          <ResumenItem
+            icono={CheckCircle2}
+            label="Culminadas / inauguradas"
+            valor={culminadas}
+            colorClase="border-emerald-300/60 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+          />
+          <ResumenItem
+            icono={TrendingUp}
+            label="Avance promedio"
+            valor={`${avancePromedio}%`}
+            colorClase="border-amber-300/60 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+          />
         </div>
       </section>
 
@@ -220,7 +239,7 @@ function RangoDoble({
 
   return (
     <section>
-      <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <h2 className="mb-3 border-l-2 border-primary/40 pl-2 text-xs font-semibold uppercase tracking-wide text-foreground/70">
         {titulo}
       </h2>
       <div className="flex flex-col gap-3 px-1">
@@ -266,11 +285,24 @@ function RangoDoble({
   );
 }
 
-function ResumenItem({ label, valor }: { label: string; valor: string | number }) {
+function ResumenItem({
+  icono: Icono,
+  label,
+  valor,
+  colorClase,
+}: {
+  icono: LucideIcon;
+  label: string;
+  valor: string | number;
+  colorClase: string;
+}) {
   return (
-    <div className="rounded-md border border-border px-3 py-2">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-xl font-semibold leading-tight">{valor}</p>
+    <div className={`flex items-center gap-3 rounded-lg border px-3 py-2 ${colorClase}`}>
+      <Icono className="size-5 shrink-0" />
+      <div>
+        <p className="text-xs text-foreground/70">{label}</p>
+        <p className="text-xl font-semibold leading-tight text-foreground">{valor}</p>
+      </div>
     </div>
   );
 }
