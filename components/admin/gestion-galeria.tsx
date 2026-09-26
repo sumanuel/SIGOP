@@ -2,7 +2,7 @@
 
 import { useRef, useState, type FormEvent } from 'react';
 import Image from 'next/image';
-import { Star, Trash2, Upload } from 'lucide-react';
+import { MapPin, Star, Trash2, Upload } from 'lucide-react';
 
 interface FotoMultimedia {
   id: string;
@@ -11,17 +11,29 @@ interface FotoMultimedia {
   titulo: string | null;
   etapa: 'ANTES' | 'DURANTE' | 'DESPUES' | null;
   esPortada: boolean;
+  avanceId: string | null;
+  fechaCaptura: string | null;
+  latitudExif: number | null;
+  longitudExif: number | null;
+}
+
+interface AvanceDisponible {
+  id: string;
+  fecha: string;
+  avanceFisico: number;
 }
 
 interface GestionGaleriaProps {
   obraId: string;
   multimediaInicial: FotoMultimedia[];
+  avancesDisponibles: AvanceDisponible[];
 }
 
-export function GestionGaleria({ obraId, multimediaInicial }: GestionGaleriaProps) {
+export function GestionGaleria({ obraId, multimediaInicial, avancesDisponibles }: GestionGaleriaProps) {
   const [fotos, setFotos] = useState<FotoMultimedia[]>(multimediaInicial);
   const [titulo, setTitulo] = useState('');
   const [etapa, setEtapa] = useState('');
+  const [avanceId, setAvanceId] = useState('');
   const [esPortada, setEsPortada] = useState(false);
   const [subiendo, setSubiendo] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +55,7 @@ export function GestionGaleria({ obraId, multimediaInicial }: GestionGaleriaProp
       formData.append('archivo', archivo);
       if (titulo) formData.append('titulo', titulo);
       if (etapa) formData.append('etapa', etapa);
+      if (avanceId) formData.append('avanceId', avanceId);
       formData.append('esPortada', String(esPortada));
 
       const res = await fetch(`/api/admin/obras/${obraId}/multimedia`, {
@@ -64,6 +77,7 @@ export function GestionGaleria({ obraId, multimediaInicial }: GestionGaleriaProp
 
       setTitulo('');
       setEtapa('');
+      setAvanceId('');
       setEsPortada(false);
       if (inputArchivoRef.current) inputArchivoRef.current.value = '';
     } catch {
@@ -137,6 +151,24 @@ export function GestionGaleria({ obraId, multimediaInicial }: GestionGaleriaProp
           </label>
         </div>
 
+        {avancesDisponibles.length > 0 && (
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium">Vincular a un avance (opcional)</span>
+            <select
+              value={avanceId}
+              onChange={(e) => setAvanceId(e.target.value)}
+              className="rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring/50"
+            >
+              <option value="">Sin vincular</option>
+              {avancesDisponibles.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {new Intl.DateTimeFormat('es-VE', { dateStyle: 'medium' }).format(new Date(a.fecha))} — {a.avanceFisico}%
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -183,6 +215,14 @@ export function GestionGaleria({ obraId, multimediaInicial }: GestionGaleriaProp
                   )}
                 </div>
                 {foto.titulo && <p className="truncate text-xs">{foto.titulo}</p>}
+                {(foto.fechaCaptura || (foto.latitudExif && foto.longitudExif)) && (
+                  <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                    <MapPin className="size-3" />
+                    Evidencia de campo
+                    {foto.fechaCaptura &&
+                      ` · ${new Intl.DateTimeFormat('es-VE', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(foto.fechaCaptura))}`}
+                  </p>
+                )}
                 <div className="flex justify-between text-xs">
                   <button
                     type="button"

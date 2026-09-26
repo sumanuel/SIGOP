@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/server/prisma';
 import { registrarAuditoria } from '@/lib/server/services/auditoria.service';
-import { guardarImagen, eliminarImagen } from '@/lib/server/uploads';
+import { guardarImagen, eliminarImagen, UploadError } from '@/lib/server/uploads';
 import type { TipoMultimedia, EtapaMultimedia } from '@prisma/client';
 
 export async function listarMultimediaDeObra(obraId: string) {
@@ -15,6 +15,10 @@ interface AgregarFotoInput {
   titulo?: string;
   etapa?: EtapaMultimedia;
   esPortada?: boolean;
+  /** Vincula la foto al avance que la generó (PLAN_PROYECTO.md sección 3.2,
+   * módulo 4) — opcional, ej. una foto subida desde la galería general no
+   * viene de ningún avance en particular. */
+  avanceId?: string;
 }
 
 /** Sube el archivo a disco y crea el registro Multimedia asociado a la obra. */
@@ -22,7 +26,19 @@ export async function agregarFoto(obraId: string, data: AgregarFotoInput, usuari
   const obra = await prisma.obra.findUnique({ where: { id: obraId }, select: { id: true } });
   if (!obra) return null;
 
-  const { url, miniaturaUrl } = await guardarImagen(data.file, `obras/${obraId}`);
+  // Si viene un avanceId, debe pertenecer a esta obra — evita que alguien
+  // cuelgue una foto en el avance de otra obra manipulando el request.
+  if (data.avanceId) {
+    const avance = await prisma.avance.findUnique({ where: { id: data.avanceId }, select: { obraId: true } });
+    if (!avance || avance.obraId !== obraId) {
+      throw new UploadError(400, 'El avance indicado no pertenece a esta obra.');
+    }
+  }
+
+  const { url, miniaturaUrl, fechaCaptura, latitudExif, longitudExif } = await guardarImagen(
+    data.file,
+    `obras/${obraId}`
+  );
 
   // Solo una foto de portada por obra: si esta se marca como portada,
   // se desmarca cualquier otra que ya lo fuera.
@@ -38,6 +54,7 @@ export async function agregarFoto(obraId: string, data: AgregarFotoInput, usuari
   const multimedia = await prisma.multimedia.create({
     data: {
       obraId,
+      avanceId: data.avanceId,
       tipo: 'IMAGEN' as TipoMultimedia,
       url,
       miniaturaUrl,
@@ -45,6 +62,9 @@ export async function agregarFoto(obraId: string, data: AgregarFotoInput, usuari
       etapa: data.etapa,
       esPortada: data.esPortada ?? false,
       orden: ultimaOrden,
+      fechaCaptura,
+      latitudExif,
+      longitudExif,
     },
   });
 

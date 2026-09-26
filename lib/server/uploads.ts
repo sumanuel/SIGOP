@@ -2,6 +2,7 @@ import { mkdir, unlink } from 'fs/promises';
 import path from 'path';
 import { randomUUID } from 'crypto';
 import sharp from 'sharp';
+import exifr from 'exifr';
 
 // Guarda dentro de public/ (ver .env.example): es la única carpeta que
 // Next.js sirve directo en la web. UPLOADS_DIR se puede sobreescribir, pero
@@ -24,12 +25,48 @@ export class UploadError extends Error {
 export interface ImagenGuardada {
   url: string;
   miniaturaUrl: string;
+  /** Evidencia de campo (PLAN_PROYECTO.md sección 3.2, módulo 4): fecha y
+   * coordenadas del EXIF original, `null` si la foto no las traía (ej. una
+   * captura de pantalla, o una cámara sin GPS activado). */
+  fechaCaptura: Date | null;
+  latitudExif: number | null;
+  longitudExif: number | null;
+}
+
+interface DatosExif {
+  fechaCaptura: Date | null;
+  latitudExif: number | null;
+  longitudExif: number | null;
+}
+
+/**
+ * Lee fecha y GPS del EXIF original — hay que hacerlo ANTES de procesar con
+ * sharp, porque `.webp()` no conserva EXIF. Nunca lanza: una foto sin EXIF
+ * (o con EXIF corrupto) sigue siendo una foto válida, solo sin esa evidencia
+ * adicional.
+ */
+async function extraerExif(buffer: Buffer): Promise<DatosExif> {
+  // `exifr.gps()` es el helper dedicado de la librería para coordenadas (más
+  // confiable que pedirlas por nombre en `parse`, que solo expone tags
+  // crudos); la fecha sí es un tag crudo normal. Cada uno falla
+  // independiente — una foto sin GPS no debe perder su fecha, y viceversa.
+  const [fecha, gps] = await Promise.all([
+    exifr.parse(buffer, ['DateTimeOriginal', 'CreateDate']).catch(() => null),
+    exifr.gps(buffer).catch(() => null),
+  ]);
+
+  return {
+    fechaCaptura: fecha?.DateTimeOriginal ?? fecha?.CreateDate ?? null,
+    latitudExif: gps?.latitude ?? null,
+    longitudExif: gps?.longitude ?? null,
+  };
 }
 
 /**
  * Valida, comprime y guarda una imagen subida (foto de obra, foto de perfil,
  * etc.), más una miniatura. Devuelve las rutas públicas (`/uploads/...`)
- * listas para guardar en `Multimedia.url` / `Persona.fotoUrl`.
+ * listas para guardar en `Multimedia.url` / `Persona.fotoUrl`, y la
+ * evidencia EXIF si la traía.
  */
 export async function guardarImagen(file: File, subcarpeta: string): Promise<ImagenGuardada> {
   if (!TIPOS_PERMITIDOS.has(file.type)) {
@@ -40,6 +77,8 @@ export async function guardarImagen(file: File, subcarpeta: string): Promise<Ima
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
+  const exif = await extraerExif(buffer);
+
   const carpetaDestino = path.join(UPLOADS_ROOT, subcarpeta);
   await mkdir(carpetaDestino, { recursive: true });
 
@@ -64,6 +103,7 @@ export async function guardarImagen(file: File, subcarpeta: string): Promise<Ima
   return {
     url: `${UPLOADS_URL_PREFIX}/${subcarpeta}/${nombreArchivo}`,
     miniaturaUrl: `${UPLOADS_URL_PREFIX}/${subcarpeta}/${nombreMiniatura}`,
+    ...exif,
   };
 }
 

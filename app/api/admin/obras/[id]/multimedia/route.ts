@@ -32,7 +32,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 }
 
 // POST /api/admin/obras/[id]/multimedia — sube una foto (multipart/form-data:
-// campo "archivo" + opcionales "titulo", "etapa", "esPortada").
+// campo "archivo" + opcionales "titulo", "etapa", "esPortada", "avanceId").
+// Fecha y GPS del EXIF se extraen del archivo mismo (ver lib/server/uploads.ts),
+// no se reciben del cliente.
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const usuario = requireAuth(request, ROLES_GESTION);
@@ -50,6 +52,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         ? (etapaForm as EtapaMultimedia)
         : undefined;
 
+    const avanceIdForm = form.get('avanceId');
+
     const multimedia = await agregarFoto(
       id,
       {
@@ -57,6 +61,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         titulo: typeof form.get('titulo') === 'string' ? String(form.get('titulo')) : undefined,
         etapa,
         esPortada: form.get('esPortada') === 'true',
+        avanceId: typeof avanceIdForm === 'string' && avanceIdForm ? avanceIdForm : undefined,
       },
       usuario.sub
     );
