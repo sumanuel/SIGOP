@@ -9,6 +9,8 @@ interface MapSidebarProps {
   onToggleTipo: (tipo: string) => void;
   estadosActivos: Set<string>;
   onToggleEstado: (estado: string) => void;
+  rangoAvance: [number, number];
+  onCambiarRangoAvance: (rango: [number, number]) => void;
 }
 
 // Panel lateral izquierdo del mapa (PLAN_PROYECTO.md sección 3.1): resumen
@@ -22,6 +24,8 @@ export function MapSidebar({
   onToggleTipo,
   estadosActivos,
   onToggleEstado,
+  rangoAvance,
+  onCambiarRangoAvance,
 }: MapSidebarProps) {
   const totalObras = obrasFiltradas.length;
   const culminadas = obrasFiltradas.filter(
@@ -81,7 +85,74 @@ export function MapSidebar({
           conteo: conteoPorEstado.get(estado) ?? 0,
         }))}
       />
+
+      <FiltroRangoAvance rango={rangoAvance} onCambiar={onCambiarRangoAvance} />
     </aside>
+  );
+}
+
+function FiltroRangoAvance({
+  rango,
+  onCambiar,
+}: {
+  rango: [number, number];
+  onCambiar: (rango: [number, number]) => void;
+}) {
+  const [minimo, maximo] = rango;
+
+  function onCambiarMinimo(valor: number) {
+    onCambiar([Math.min(valor, maximo), maximo]);
+  }
+
+  function onCambiarMaximo(valor: number) {
+    onCambiar([minimo, Math.max(valor, minimo)]);
+  }
+
+  return (
+    <section>
+      <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        Rango de avance
+      </h2>
+      <div className="flex flex-col gap-3 px-1">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>{minimo}%</span>
+          <span>{maximo}%</span>
+        </div>
+        <div className="flex flex-col gap-2">
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] text-muted-foreground">Mínimo</span>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={minimo}
+              onChange={(e) => onCambiarMinimo(Number(e.target.value))}
+              className="w-full accent-primary"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] text-muted-foreground">Máximo</span>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={maximo}
+              onChange={(e) => onCambiarMaximo(Number(e.target.value))}
+              className="w-full accent-primary"
+            />
+          </label>
+        </div>
+        {(minimo > 0 || maximo < 100) && (
+          <button
+            type="button"
+            onClick={() => onCambiar([0, 100])}
+            className="self-start text-xs text-primary hover:underline"
+          >
+            Restablecer
+          </button>
+        )}
+      </div>
+    </section>
   );
 }
 

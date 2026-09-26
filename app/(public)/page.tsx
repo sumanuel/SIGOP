@@ -16,6 +16,7 @@ export default function MapaPage() {
   const [obraSeleccionada, setObraSeleccionada] = useState<ObraMapa | null>(null);
   const [tiposActivos, setTiposActivos] = useState<Set<string>>(new Set());
   const [estadosActivos, setEstadosActivos] = useState<Set<string>>(new Set());
+  const [rangoAvance, setRangoAvance] = useState<[number, number]>([0, 100]);
 
   // Guarda las obras y, en el mismo paso, activa todos sus tipos y estados en
   // los filtros (evita un segundo efecto encadenado solo para derivar esto).
@@ -77,7 +78,11 @@ export default function MapaPage() {
   }
 
   const obrasFiltradas = obras.filter(
-    (o) => tiposActivos.has(o.tipoObra.nombre) && estadosActivos.has(o.estado)
+    (o) =>
+      tiposActivos.has(o.tipoObra.nombre) &&
+      estadosActivos.has(o.estado) &&
+      o.avanceFisico >= rangoAvance[0] &&
+      o.avanceFisico <= rangoAvance[1]
   );
 
   return (
@@ -89,6 +94,8 @@ export default function MapaPage() {
         onToggleTipo={(tipo) => setTiposActivos((prev) => alternarEnSet(prev, tipo))}
         estadosActivos={estadosActivos}
         onToggleEstado={(estadoNombre) => setEstadosActivos((prev) => alternarEnSet(prev, estadoNombre))}
+        rangoAvance={rangoAvance}
+        onCambiarRangoAvance={setRangoAvance}
       />
 
       <div className="relative flex-1">
