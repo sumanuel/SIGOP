@@ -559,3 +559,63 @@ Si el objetivo es maximizar impacto en la presentación sin inflar el piloto, yo
 4. ⬜ Definir la región piloto y conseguir datos de 10–30 obras.
 5. ⬜ Diseñar las pantallas clave en Figma.
 6. ⬜ Iniciar el repositorio y la Fase 1.
+
+---
+
+## 15. App de campo para supervisores (proyecto futuro, después de cerrar SIGOP)
+
+> Ya estaba anticipado en la sección 4 y en la Fase 3 ("PWA para supervisores
+> de campo con modo sin conexión") — esta sección lo desarrolla con más
+> detalle para poder retomarlo como un proyecto independiente sin tener que
+> re-derivar el diseño desde cero.
+
+### El problema que resuelve
+El registro de avances y la carga de fotos (ya construidos en el panel
+admin) están pensados para alguien en una oficina, frente a una
+computadora. La persona que de verdad está parada en la obra — el
+supervisor — necesita poder registrar el avance **desde el celular, en el
+sitio, incluso sin señal**, con evidencia real (foto + GPS + fecha), no
+tecleando después de memoria desde su casa.
+
+### Decisión de arquitectura: PWA, no una app nativa desde cero
+- **Reutiliza el 100% de la API que ya existe**: `POST
+  /api/admin/obras/[id]/avances` y `/multimedia` sirven tal cual, sin
+  backend nuevo.
+- **Se instala sin pasar por Play Store**: el supervisor entra desde Chrome
+  y usa "Agregar a pantalla de inicio" — importante para desplegar rápido a
+  un grupo reducido de personas en un piloto.
+- **Cámara y GPS con APIs web estándar**: `<input capture>` para la
+  cámara, Geolocation API para las coordenadas — no hace falta código
+  nativo para esto.
+- **Camino de escalamiento sin reescribir nada**: si más adelante se
+  necesita presencia real en Google Play, la misma PWA se envuelve con
+  **Capacitor** — mismo código, empaquetado como app. No implica migrar a
+  React Native/Flutter.
+- Lo genuinamente difícil es el **modo sin conexión**: Service Worker que
+  cachea la app, cola local en IndexedDB para los avances/fotos pendientes,
+  y sincronización automática cuando vuelve la señal (Background Sync
+  donde el navegador lo soporte; si no, sincronizar al volver a abrir la
+  app con conexión).
+
+### Alcance mínimo cuando se retome
+1. Login (reutiliza el mismo sistema JWT/cookies).
+2. Lista de "mis obras asignadas" al supervisor.
+3. Pantalla "Registrar avance": los mismos campos que ya existen
+   (`avanceFisico`, `avanceFinanciero`, comentario) + captura de fotos con
+   GPS y fecha automáticos.
+4. Cola local visible ("guardado, pendiente de subir") mientras no hay
+   señal, con reintento automático.
+
+### Lo que falta en el backend actual para soportarlo
+- `Multimedia.latitudExif` / `longitudExif` / `fechaCaptura` — el campo ya
+  existe en el schema (`prisma/schema.prisma`), pero hoy nadie los llena;
+  falta que el cliente los envíe y el endpoint de subida los guarde.
+- `Multimedia.avanceId` — también ya existe en el schema, para vincular una
+  foto con el avance específico que la generó; hoy se crea siempre `null`.
+- Vincular `Usuario` con las obras que tiene asignadas (hoy el rol
+  `EDITOR_OBRA` ve/edita todas las obras por igual, no hay un concepto de
+  "mis obras").
+
+### Cuándo abordarlo
+Como proyecto propio, después de cerrar esta ronda de SIGOP — no antes,
+para no dividir el foco entre dos frentes a la vez.
