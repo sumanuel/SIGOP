@@ -101,6 +101,13 @@ const INCLUDE_DETALLE = {
   personal: {
     include: { persona: true, cargo: true },
   },
+  // Solo aprobados: los pendientes/rechazados se moderan en /admin/reportes,
+  // nunca llegan a la ficha pública. No se selecciona `correo` (privado).
+  reportesCiudadanos: {
+    where: { estadoModeracion: 'APROBADO' as const },
+    orderBy: { createdAt: 'desc' as const },
+    select: { id: true, nombre: true, mensaje: true, fotoUrl: true, createdAt: true },
+  },
 };
 
 interface ObtenerObraDetalleOpts {

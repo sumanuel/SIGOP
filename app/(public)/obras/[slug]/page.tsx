@@ -9,6 +9,7 @@ import { ObraFinanzas } from '@/components/obra/obra-finanzas';
 import { ObraLineaTiempo } from '@/components/obra/obra-linea-tiempo';
 import { ObraAvanceChart } from '@/components/obra/obra-avance-chart';
 import { ObraAcciones } from '@/components/obra/obra-acciones';
+import { ObraReportes } from '@/components/obra/obra-reportes';
 import type { ObraMapa } from '@/lib/types/obra';
 
 interface PageProps {
@@ -128,6 +129,8 @@ export default async function ObraFichaPage({ params }: PageProps) {
             historial={historial}
             atrasoDias={calcularAtrasoDias(obra)}
           />
+
+          <ObraReportes reportes={obra.reportesCiudadanos} />
         </div>
 
         <div className="flex flex-col gap-6">
