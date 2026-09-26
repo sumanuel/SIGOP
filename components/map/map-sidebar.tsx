@@ -1,6 +1,9 @@
-import { Search } from 'lucide-react';
+import { Map as MapIcon, List, Search } from 'lucide-react';
 import type { ObraMapa } from '@/lib/types/obra';
 import { formatearMoneda } from '@/lib/format';
+import { FiltroDesplegable, type FiltroItem } from '@/components/map/filtro-desplegable';
+
+export type Vista = 'mapa' | 'lista';
 
 interface MapSidebarProps {
   /** Todas las obras cargadas (sin filtrar) — para los conteos por filtro. */
@@ -9,14 +12,18 @@ interface MapSidebarProps {
   obrasFiltradas: ObraMapa[];
   busqueda: string;
   onCambiarBusqueda: (valor: string) => void;
+  vista: Vista;
+  onCambiarVista: (vista: Vista) => void;
   tiposActivos: Set<string>;
-  onToggleTipo: (tipo: string) => void;
+  onCambiarTipos: (nuevo: Set<string>) => void;
   estadosActivos: Set<string>;
-  onToggleEstado: (estado: string) => void;
+  onCambiarEstados: (nuevo: Set<string>) => void;
   municipiosActivos: Set<string>;
-  onToggleMunicipio: (municipio: string) => void;
+  onCambiarMunicipios: (nuevo: Set<string>) => void;
   estatusActivos: Set<string>;
-  onToggleEstatus: (estatus: string) => void;
+  onCambiarEstatus: (nuevo: Set<string>) => void;
+  aniosActivos: Set<string>;
+  onCambiarAnios: (nuevo: Set<string>) => void;
   rangoAvance: [number, number];
   onCambiarRangoAvance: (rango: [number, number]) => void;
   rangoPresupuesto: [number, number];
@@ -24,23 +31,33 @@ interface MapSidebarProps {
   onCambiarRangoPresupuesto: (rango: [number, number]) => void;
 }
 
+/** "2025" o, para obras sin fecha de aprobación, el bucket "Sin fecha". */
+export function claveAnio(obra: ObraMapa): string {
+  return obra.anioAprobacion !== null ? String(obra.anioAprobacion) : 'Sin fecha';
+}
+
 // Panel lateral izquierdo del mapa (PLAN_PROYECTO.md sección 3.1): buscador,
-// resumen y filtros (tipo, estado, municipio, estatus, rango de avance,
-// rango de presupuesto). Oculto en móvil por ahora (el mapa ocupa todo el
-// ancho); una versión "cajón" deslizable queda pendiente.
+// alternar vista, resumen y filtros. Las categorías con muchos valores
+// posibles (estado, municipio, año) usan un desplegable con checkboxes y
+// buscador interno en vez de una lista plana — evita que el sidebar se
+// vuelva interminable cuando haya obras en decenas de municipios reales.
 export function MapSidebar({
   obras,
   obrasFiltradas,
   busqueda,
   onCambiarBusqueda,
+  vista,
+  onCambiarVista,
   tiposActivos,
-  onToggleTipo,
+  onCambiarTipos,
   estadosActivos,
-  onToggleEstado,
+  onCambiarEstados,
   municipiosActivos,
-  onToggleMunicipio,
+  onCambiarMunicipios,
   estatusActivos,
-  onToggleEstatus,
+  onCambiarEstatus,
+  aniosActivos,
+  onCambiarAnios,
   rangoAvance,
   onCambiarRangoAvance,
   rangoPresupuesto,
@@ -56,21 +73,17 @@ export function MapSidebar({
       ? 0
       : Math.round(obrasFiltradas.reduce((acc, o) => acc + o.avanceFisico, 0) / totalObras);
 
-  const tiposUnicos = Array.from(
-    new Map(obras.map((o) => [o.tipoObra.nombre, o.tipoObra])).values()
+  const tiposItems = construirItems(obras, (o) => [
+    { valor: o.tipoObra.nombre, etiqueta: o.tipoObra.nombre, color: o.tipoObra.color },
+  ]);
+  const estatusItems = construirItems(obras, (o) => [
+    { valor: o.estatus.nombre, etiqueta: o.estatus.nombre, color: o.estatus.color },
+  ]);
+  const estadosItems = construirItems(obras, (o) => [{ valor: o.estado, etiqueta: o.estado }]);
+  const municipiosItems = construirItems(obras, (o) => [{ valor: o.municipio, etiqueta: o.municipio }]);
+  const aniosItems = construirItems(obras, (o) => [{ valor: claveAnio(o), etiqueta: claveAnio(o) }]).sort(
+    (a, b) => (a.valor === 'Sin fecha' ? 1 : b.valor === 'Sin fecha' ? -1 : b.valor.localeCompare(a.valor))
   );
-  const conteoPorTipo = contarPor(obras, (o) => o.tipoObra.nombre);
-
-  const estadosUnicos = Array.from(new Set(obras.map((o) => o.estado))).sort();
-  const conteoPorEstado = contarPor(obras, (o) => o.estado);
-
-  const municipiosUnicos = Array.from(new Set(obras.map((o) => o.municipio))).sort();
-  const conteoPorMunicipio = contarPor(obras, (o) => o.municipio);
-
-  const estatusUnicos = Array.from(
-    new Map(obras.map((o) => [o.estatus.nombre, o.estatus])).values()
-  );
-  const conteoPorEstatus = contarPor(obras, (o) => o.estatus.nombre);
 
   return (
     <aside className="hidden w-72 shrink-0 flex-col gap-6 overflow-y-auto border-r border-border bg-background p-4 sm:flex">
@@ -85,6 +98,29 @@ export function MapSidebar({
         />
       </label>
 
+      <div className="flex rounded-md border border-border p-0.5 text-sm">
+        <button
+          type="button"
+          onClick={() => onCambiarVista('mapa')}
+          aria-pressed={vista === 'mapa'}
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded px-2 py-1.5 ${
+            vista === 'mapa' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <MapIcon className="size-4" /> Mapa
+        </button>
+        <button
+          type="button"
+          onClick={() => onCambiarVista('lista')}
+          aria-pressed={vista === 'lista'}
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded px-2 py-1.5 ${
+            vista === 'lista' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <List className="size-4" /> Lista
+        </button>
+      </div>
+
       <section>
         <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Resumen
@@ -96,50 +132,20 @@ export function MapSidebar({
         </div>
       </section>
 
-      <FiltroSeccion
-        titulo="Tipo de obra"
-        activos={tiposActivos}
-        onToggle={onToggleTipo}
-        items={tiposUnicos.map((tipo) => ({
-          valor: tipo.nombre,
-          etiqueta: tipo.nombre,
-          color: tipo.color,
-          conteo: conteoPorTipo.get(tipo.nombre) ?? 0,
-        }))}
-      />
-
-      <FiltroSeccion
-        titulo="Estatus"
-        activos={estatusActivos}
-        onToggle={onToggleEstatus}
-        items={estatusUnicos.map((estatus) => ({
-          valor: estatus.nombre,
-          etiqueta: estatus.nombre,
-          color: estatus.color,
-          conteo: conteoPorEstatus.get(estatus.nombre) ?? 0,
-        }))}
-      />
-
-      <FiltroSeccion
-        titulo="Estado"
-        activos={estadosActivos}
-        onToggle={onToggleEstado}
-        items={estadosUnicos.map((estado) => ({
-          valor: estado,
-          etiqueta: estado,
-          conteo: conteoPorEstado.get(estado) ?? 0,
-        }))}
-      />
-
-      <FiltroSeccion
+      <FiltroDesplegable titulo="Tipo de obra" items={tiposItems} activos={tiposActivos} onCambiar={onCambiarTipos} />
+      <FiltroDesplegable titulo="Estatus" items={estatusItems} activos={estatusActivos} onCambiar={onCambiarEstatus} />
+      <FiltroDesplegable titulo="Estado" items={estadosItems} activos={estadosActivos} onCambiar={onCambiarEstados} />
+      <FiltroDesplegable
         titulo="Municipio"
+        items={municipiosItems}
         activos={municipiosActivos}
-        onToggle={onToggleMunicipio}
-        items={municipiosUnicos.map((municipio) => ({
-          valor: municipio,
-          etiqueta: municipio,
-          conteo: conteoPorMunicipio.get(municipio) ?? 0,
-        }))}
+        onCambiar={onCambiarMunicipios}
+      />
+      <FiltroDesplegable
+        titulo="Año de aprobación"
+        items={aniosItems}
+        activos={aniosActivos}
+        onCambiar={onCambiarAnios}
       />
 
       <RangoDoble
@@ -167,68 +173,19 @@ export function MapSidebar({
   );
 }
 
-function contarPor<T>(items: T[], clave: (item: T) => string): Map<string, number> {
-  const mapa = new Map<string, number>();
-  items.forEach((item) => {
-    const k = clave(item);
-    mapa.set(k, (mapa.get(k) ?? 0) + 1);
+/** Arma la lista de opciones únicas + conteo para un FiltroDesplegable. */
+function construirItems(
+  obras: ObraMapa[],
+  extraer: (obra: ObraMapa) => Omit<FiltroItem, 'conteo'>[]
+): FiltroItem[] {
+  const mapa = new Map<string, FiltroItem>();
+  obras.forEach((obra) => {
+    extraer(obra).forEach((item) => {
+      const previo = mapa.get(item.valor);
+      mapa.set(item.valor, { ...item, conteo: (previo?.conteo ?? 0) + 1 });
+    });
   });
-  return mapa;
-}
-
-interface FiltroItem {
-  valor: string;
-  etiqueta: string;
-  color?: string | null;
-  conteo: number;
-}
-
-function FiltroSeccion({
-  titulo,
-  items,
-  activos,
-  onToggle,
-}: {
-  titulo: string;
-  items: FiltroItem[];
-  activos: Set<string>;
-  onToggle: (valor: string) => void;
-}) {
-  if (items.length === 0) return null;
-
-  return (
-    <section>
-      <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        {titulo}
-      </h2>
-      <ul className="flex flex-col gap-1">
-        {items.map((item) => {
-          const activo = activos.has(item.valor);
-          return (
-            <li key={item.valor}>
-              <button
-                type="button"
-                onClick={() => onToggle(item.valor)}
-                aria-pressed={activo}
-                className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-muted hover:text-foreground hover:opacity-100 ${
-                  activo ? 'text-foreground' : 'text-muted-foreground opacity-50'
-                }`}
-              >
-                {item.color && (
-                  <span
-                    className="h-2.5 w-2.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: item.color }}
-                  />
-                )}
-                <span className="flex-1 text-left">{item.etiqueta}</span>
-                <span className="text-xs tabular-nums text-muted-foreground">{item.conteo}</span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
-  );
+  return Array.from(mapa.values()).sort((a, b) => a.etiqueta.localeCompare(b.etiqueta));
 }
 
 function RangoDoble({

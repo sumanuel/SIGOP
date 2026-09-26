@@ -71,6 +71,7 @@ export default async function ObraFichaPage({ params }: PageProps) {
           estatus: { nombre: obra.estatus.nombre, color: obra.estatus.color ?? '#94A3B8' },
           avanceFisico: obra.avanceFisico,
           presupuestoAprobado: Number(obra.presupuestoAprobado.toString()),
+          anioAprobacion: obra.fechaAprobacion ? obra.fechaAprobacion.getFullYear() : null,
           estado: obra.estado.nombre,
           municipio: obra.municipio.nombre,
           lat: obra.lat,

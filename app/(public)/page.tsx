@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import ObrasMapLoader from '@/components/map/obras-map-loader';
-import { MapSidebar } from '@/components/map/map-sidebar';
+import { MapSidebar, claveAnio, type Vista } from '@/components/map/map-sidebar';
+import { ObrasLista } from '@/components/map/obras-lista';
 import { ObraDetallePanel } from '@/components/map/obra-detalle-panel';
 import { OBRAS_DEMO } from '@/lib/data/obras-demo';
 import { normalizarTexto } from '@/lib/texto';
@@ -21,12 +22,14 @@ export default function MapaPage() {
   const [estado, setEstado] = useState<EstadoCarga>('cargando');
   const [modoDemo, setModoDemo] = useState(false);
   const [obraSeleccionada, setObraSeleccionada] = useState<ObraMapa | null>(null);
+  const [vista, setVista] = useState<Vista>('mapa');
 
   const [busqueda, setBusqueda] = useState('');
   const [tiposActivos, setTiposActivos] = useState<Set<string>>(new Set());
   const [estadosActivos, setEstadosActivos] = useState<Set<string>>(new Set());
   const [municipiosActivos, setMunicipiosActivos] = useState<Set<string>>(new Set());
   const [estatusActivos, setEstatusActivos] = useState<Set<string>>(new Set());
+  const [aniosActivos, setAniosActivos] = useState<Set<string>>(new Set());
   const [rangoAvance, setRangoAvance] = useState<[number, number]>([0, 100]);
   const [rangoPresupuesto, setRangoPresupuesto] = useState<[number, number]>([0, 0]);
   const [limitesPresupuesto, setLimitesPresupuesto] = useState<[number, number]>([0, 0]);
@@ -39,6 +42,7 @@ export default function MapaPage() {
     setEstadosActivos(new Set(nuevas.map((o) => o.estado)));
     setMunicipiosActivos(new Set(nuevas.map((o) => o.municipio)));
     setEstatusActivos(new Set(nuevas.map((o) => o.estatus.nombre)));
+    setAniosActivos(new Set(nuevas.map(claveAnio)));
 
     const limites = calcularLimitesPresupuesto(nuevas);
     setLimitesPresupuesto(limites);
@@ -86,16 +90,6 @@ export default function MapaPage() {
     };
   }, []);
 
-  function alternarEnSet(set: Set<string>, valor: string): Set<string> {
-    const next = new Set(set);
-    if (next.has(valor)) {
-      next.delete(valor);
-    } else {
-      next.add(valor);
-    }
-    return next;
-  }
-
   const busquedaNormalizada = normalizarTexto(busqueda);
 
   const obrasFiltradas = obras.filter((o) => {
@@ -103,6 +97,7 @@ export default function MapaPage() {
     if (!estadosActivos.has(o.estado)) return false;
     if (!municipiosActivos.has(o.municipio)) return false;
     if (!estatusActivos.has(o.estatus.nombre)) return false;
+    if (!aniosActivos.has(claveAnio(o))) return false;
     if (o.avanceFisico < rangoAvance[0] || o.avanceFisico > rangoAvance[1]) return false;
     if (o.presupuestoAprobado < rangoPresupuesto[0] || o.presupuestoAprobado > rangoPresupuesto[1]) {
       return false;
@@ -123,14 +118,18 @@ export default function MapaPage() {
         obrasFiltradas={obrasFiltradas}
         busqueda={busqueda}
         onCambiarBusqueda={setBusqueda}
+        vista={vista}
+        onCambiarVista={setVista}
         tiposActivos={tiposActivos}
-        onToggleTipo={(tipo) => setTiposActivos((prev) => alternarEnSet(prev, tipo))}
+        onCambiarTipos={setTiposActivos}
         estadosActivos={estadosActivos}
-        onToggleEstado={(estadoNombre) => setEstadosActivos((prev) => alternarEnSet(prev, estadoNombre))}
+        onCambiarEstados={setEstadosActivos}
         municipiosActivos={municipiosActivos}
-        onToggleMunicipio={(municipio) => setMunicipiosActivos((prev) => alternarEnSet(prev, municipio))}
+        onCambiarMunicipios={setMunicipiosActivos}
         estatusActivos={estatusActivos}
-        onToggleEstatus={(estatusNombre) => setEstatusActivos((prev) => alternarEnSet(prev, estatusNombre))}
+        onCambiarEstatus={setEstatusActivos}
+        aniosActivos={aniosActivos}
+        onCambiarAnios={setAniosActivos}
         rangoAvance={rangoAvance}
         onCambiarRangoAvance={setRangoAvance}
         rangoPresupuesto={rangoPresupuesto}
@@ -139,7 +138,11 @@ export default function MapaPage() {
       />
 
       <div className="relative flex-1">
-        <ObrasMapLoader obras={obrasFiltradas} onSeleccionarObra={setObraSeleccionada} />
+        {vista === 'mapa' ? (
+          <ObrasMapLoader obras={obrasFiltradas} onSeleccionarObra={setObraSeleccionada} />
+        ) : (
+          <ObrasLista obras={obrasFiltradas} onSeleccionar={setObraSeleccionada} />
+        )}
 
         {estado === 'cargando' && (
           <div className="absolute inset-x-0 top-4 mx-auto w-fit rounded-full bg-background/90 px-3 py-1 text-xs text-muted-foreground shadow">

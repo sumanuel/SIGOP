@@ -15,6 +15,7 @@ interface FilaObraMapa {
   nombre: string;
   avanceFisico: number;
   presupuestoAprobado: number;
+  anioAprobacion: number | null;
   estado: string;
   municipio: string;
   tipoObraNombre: string;
@@ -35,6 +36,7 @@ export async function listarObrasParaMapa(): Promise<ObraMapa[]> {
       o.nombre,
       o."avanceFisico" AS "avanceFisico",
       o."presupuestoAprobado"::float AS "presupuestoAprobado",
+      EXTRACT(YEAR FROM o."fechaAprobacion")::int AS "anioAprobacion",
       es.nombre AS estado,
       m.nombre AS municipio,
       t.nombre AS "tipoObraNombre",
@@ -64,6 +66,7 @@ export async function listarObrasParaMapa(): Promise<ObraMapa[]> {
       nombre: fila.nombre,
       avanceFisico: fila.avanceFisico,
       presupuestoAprobado: fila.presupuestoAprobado,
+      anioAprobacion: fila.anioAprobacion,
       estado: fila.estado,
       municipio: fila.municipio,
       tipoObra: {

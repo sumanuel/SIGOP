@@ -19,6 +19,7 @@ export interface ObraMapa {
   };
   avanceFisico: number;
   presupuestoAprobado: number;
+  anioAprobacion: number | null;
   estado: string;
   municipio: string;
   lat: number;
