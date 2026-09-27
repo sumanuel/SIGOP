@@ -10,12 +10,14 @@ import {
   MessageSquare,
   ScrollText,
   Tags,
+  UserCog,
   Users,
   type LucideIcon,
 } from 'lucide-react';
 import { AdminNav } from '@/components/admin/admin-nav';
 import { GraficoPorTipo } from '@/components/estadisticas/grafico-por-tipo';
 import { GraficoPublicacion } from '@/components/admin/grafico-publicacion';
+import { ROL_LEGIBLE } from '@/lib/rol-legible';
 
 interface UsuarioSesion {
   id: string;
@@ -23,14 +25,6 @@ interface UsuarioSesion {
   email: string;
   rol: string;
 }
-
-const ROL_LEGIBLE: Record<string, string> = {
-  SUPER_ADMIN: 'Super administrador',
-  ADMIN_ENTE: 'Administrador de ente',
-  EDITOR_OBRA: 'Editor de obra',
-  APROBADOR: 'Aprobador',
-  CONSULTA: 'Consulta',
-};
 
 interface ObraConAtraso {
   id: string;
@@ -129,7 +123,7 @@ export default function AdminDashboard() {
         </Link>
       )}
 
-      <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <TarjetaAcceso
           href="/admin/obras"
           icono={Building2}
@@ -165,6 +159,13 @@ export default function AdminDashboard() {
           titulo="Catálogos"
           descripcion="Gestionar valores"
           colorClase="border-emerald-300/60 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+        />
+        <TarjetaAcceso
+          href="/admin/usuarios"
+          icono={UserCog}
+          titulo="Usuarios"
+          descripcion="Roles y accesos"
+          colorClase="border-rose-300/60 bg-rose-500/10 text-rose-700 dark:text-rose-400"
         />
       </div>
 
