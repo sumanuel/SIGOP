@@ -39,7 +39,7 @@ const PREGUNTAS = [
   {
     pregunta: '¿Puedo descargar los datos de las obras?',
     respuesta:
-      'La descarga de datos abiertos (CSV / GeoJSON) está planificada pero todavía no está disponible en esta versión del portal.',
+      'Sí. En la sección de Datos abiertos puedes descargar la información pública de las obras publicadas en CSV, GeoJSON o JSON, sin registro. Nunca incluye datos personales del equipo.',
   },
 ];
 

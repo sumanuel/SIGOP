@@ -49,9 +49,9 @@ export default function AcercaDePage() {
           <p className="mt-2 text-muted-foreground">
             SIGOP está construido enteramente con tecnología de código abierto, sin depender de
             servicios propietarios externos — un principio de soberanía tecnológica tan importante
-            como la transparencia de los datos que muestra. La meta a mediano plazo es que toda la
-            información pública del portal pueda descargarse como datos abiertos (CSV / GeoJSON)
-            para periodistas, investigadores y contraloría social.
+            como la transparencia de los datos que muestra. Por eso la información pública de las obras
+            puede descargarse como datos abiertos (CSV / GeoJSON) para periodistas, investigadores
+            y contraloría social.
           </p>
         </section>
 
