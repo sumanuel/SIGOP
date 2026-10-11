@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { Share2, Copy, Check, Users } from 'lucide-react';
+import { Share2, Copy, Check, Users, FileDown } from 'lucide-react';
 import Link from 'next/link';
 
 interface ObraAccionesProps {
@@ -40,17 +40,26 @@ export function ObraAcciones({ nombre, url, qrDataUrl, slug }: ObraAccionesProps
 
   return (
     <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 shadow-sm">
-      <h2 className="text-lg font-semibold">Compartir y equipo</h2>
+      <h2 className="text-lg font-semibold print:hidden">Compartir y equipo</h2>
 
       <Link
         href={`/obras/${slug}/equipo`}
-        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background print:hidden"
       >
         <Users className="size-4" aria-hidden="true" />
         Ver equipo de trabajo
       </Link>
 
-      <div className="flex gap-2">
+      <button
+        type="button"
+        onClick={() => window.print()}
+        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border px-3 py-2 text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring print:hidden"
+      >
+        <FileDown className="size-4" aria-hidden="true" />
+        Descargar ficha en PDF
+      </button>
+
+      <div className="flex gap-2 print:hidden">
         <button
           type="button"
           onClick={compartir}
@@ -76,7 +85,7 @@ export function ObraAcciones({ nombre, url, qrDataUrl, slug }: ObraAccionesProps
         </span>
       </div>
 
-      <div className="flex flex-col items-center gap-2 border-t border-border pt-4">
+      <div className="flex flex-col items-center gap-2 border-t border-border pt-4 print:border-0 print:pt-0">
         <Image
           src={qrDataUrl}
           alt="Código QR de la obra"

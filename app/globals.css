@@ -134,3 +134,18 @@
     @apply font-sans;
   }
 }
+/* Impresión / "Guardar como PDF" (ficha de obra): conserva los colores de
+   las barras de avance, aprovecha el ancho del papel y evita partir tarjetas
+   a mitad de página. */
+@media print {
+  @page {
+    margin: 14mm;
+  }
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  section {
+    break-inside: avoid;
+  }
+}

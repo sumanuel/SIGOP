@@ -31,7 +31,20 @@ export function SelectorTema() {
     return () => media.removeEventListener('change', alCambiar);
   }, [preferencia]);
 
-  const siguiente = ORDEN_TEMAS[(ORDEN_TEMAS.indexOf(preferencia) + 1) % ORDEN_TEMAS.length];
+  // Al imprimir o guardar como PDF siempre se usa el tema claro (fondo
+  // oscuro gasta tinta y se lee mal en papel); luego se restaura la preferencia.
+  useEffect(() => {
+    const antesDeImprimir = () => document.documentElement.classList.remove('dark');
+    const despuesDeImprimir = () => aplicarTema(preferencia);
+    window.addEventListener('beforeprint', antesDeImprimir);
+    window.addEventListener('afterprint', despuesDeImprimir);
+    return () => {
+      window.removeEventListener('beforeprint', antesDeImprimir);
+      window.removeEventListener('afterprint', despuesDeImprimir);
+    };
+  }, [preferencia]);
+
+  const siguiente =ORDEN_TEMAS[(ORDEN_TEMAS.indexOf(preferencia) + 1) % ORDEN_TEMAS.length];
   const Icono = ICONO[preferencia];
 
   return (

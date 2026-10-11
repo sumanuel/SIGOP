@@ -45,7 +45,7 @@ export function ObraDatosGenerales({
       </dl>
 
       {mapaObra ? (
-        <div className="h-64 w-full overflow-hidden rounded-lg border border-border">
+        <div className="h-64 w-full overflow-hidden rounded-lg border border-border print:hidden">
           <ObrasMapLoader obras={[mapaObra]} />
         </div>
       ) : (

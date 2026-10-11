@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Plus, X } from 'lucide-react';
+import { FileSpreadsheet, Plus, X } from 'lucide-react';
 import { AdminNav } from '@/components/admin/admin-nav';
 
 interface ObraFila {
@@ -103,13 +103,23 @@ function AdminObrasPageInner() {
             Crear, editar y publicar las obras que se muestran en el portal.
           </p>
         </div>
-        <Link
-          href="/admin/obras/nueva"
-          className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
-          <Plus className="size-4" />
-          Nueva obra
-        </Link>
+        <div className="flex items-center gap-2">
+          <a
+            href={`/api/admin/obras/exportar${filtroPublicacion ? `?publicacion=${filtroPublicacion}` : ''}`}
+            download
+            className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-muted"
+          >
+            <FileSpreadsheet className="size-4" aria-hidden="true" />
+            Exportar a Excel
+          </a>
+          <Link
+            href="/admin/obras/nueva"
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            <Plus className="size-4" />
+            Nueva obra
+          </Link>
+        </div>
       </div>
 
       {error && <p className="mt-4 text-sm text-destructive">{error}</p>}

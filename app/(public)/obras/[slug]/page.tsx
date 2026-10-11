@@ -79,7 +79,13 @@ export default async function ObraFichaPage({ params }: PageProps) {
   const qrDataUrl = await QRCode.toDataURL(urlObra, { margin: 1, width: 280 });
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8 print:max-w-none print:p-0">
+      {/* Solo se ve al imprimir / guardar como PDF: identifica el documento. */}
+      <div className="mb-4 hidden items-center justify-between border-b-2 border-primary pb-2 text-xs print:flex">
+        <span className="text-sm font-bold">SIGOP — Ficha de obra</span>
+        <span className="text-muted-foreground">{urlObra}</span>
+      </div>
+
       <ObraHeader
         nombre={obra.nombre}
         codigo={obra.codigo}
@@ -135,6 +141,11 @@ export default async function ObraFichaPage({ params }: PageProps) {
           <ObraAcciones nombre={obra.nombre} url={urlObra} qrDataUrl={qrDataUrl} slug={obra.slug} />
         </div>
       </div>
+
+      <p className="mt-6 hidden justify-center text-center text-xs text-muted-foreground print:flex">
+        Información pública del portal SIGOP, generada el {new Date().toLocaleDateString('es-VE')}. Los datos pueden
+        haber cambiado: consulta la versión vigente en el enlace de arriba.
+      </p>
     </div>
   );
 }

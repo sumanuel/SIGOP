@@ -18,7 +18,7 @@ export function SiteHeader() {
   const [menuAbierto, setMenuAbierto] = useState(false);
 
   return (
-    <header className="relative z-20 flex h-16 shrink-0 items-center justify-between border-b-2 border-primary/15 bg-background px-4 sm:px-6">
+    <header className="relative z-20 flex print:hidden h-16 shrink-0 items-center justify-between border-b-2 border-primary/15 bg-background px-4 sm:px-6">
       <Link href="/" className="flex items-center gap-3" onClick={() => setMenuAbierto(false)}>
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-primary to-primary/70 text-base font-bold text-primary-foreground shadow-sm">
           S
