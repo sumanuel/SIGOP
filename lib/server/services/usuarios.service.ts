@@ -29,7 +29,16 @@ const SELECCION_PUBLICA = {
 } as const;
 
 export async function listarUsuarios() {
-  return prisma.usuario.findMany({ select: SELECCION_PUBLICA, orderBy: { nombre: 'asc' } });
+  // Se lee `twoFactorSecret` solo para derivar un booleano; el secreto nunca
+  // sale de esta función.
+  const usuarios = await prisma.usuario.findMany({
+    select: { ...SELECCION_PUBLICA, twoFactorSecret: true },
+    orderBy: { nombre: 'asc' },
+  });
+  return usuarios.map(({ twoFactorSecret, ...usuario }) => ({
+    ...usuario,
+    dosFactoresActivo: Boolean(twoFactorSecret),
+  }));
 }
 
 export async function obtenerUsuario(id: string) {

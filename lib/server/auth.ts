@@ -48,3 +48,32 @@ export function verifyAccessToken(token: string): JwtPayload {
 export function verifyRefreshToken(token: string): JwtPayload {
   return jwt.verify(token, getSecret('JWT_REFRESH_SECRET')) as JwtPayload;
 }
+
+// Tokens de un solo propósito y vida corta (paso intermedio del 2FA). Se firman
+// con un secreto derivado distinto por propósito, para que NUNCA puedan
+// aceptarse como access/refresh token aunque alguien los reenvíe en una cookie.
+export type PropositoTokenTemporal = 'login-2fa' | 'configurar-2fa';
+
+function secretoTemporal(proposito: PropositoTokenTemporal): string {
+  return `${getSecret('JWT_REFRESH_SECRET')}:temporal:${proposito}`;
+}
+
+export function firmarTokenTemporal(
+  proposito: PropositoTokenTemporal,
+  claims: Record<string, string>,
+  expiraEnSegundos: number
+): string {
+  return jwt.sign(claims, secretoTemporal(proposito), { expiresIn: expiraEnSegundos });
+}
+
+/** Devuelve los claims, o `null` si el token es inválido, expiró o es de otro propósito. */
+export function verificarTokenTemporal(
+  proposito: PropositoTokenTemporal,
+  token: string
+): Record<string, string> | null {
+  try {
+    return jwt.verify(token, secretoTemporal(proposito)) as Record<string, string>;
+  } catch {
+    return null;
+  }
+}

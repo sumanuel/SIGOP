@@ -29,6 +29,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Correo o contraseña incorrectos' }, { status: 401 });
     }
 
+    if (resultado.requiere2fa) {
+      return NextResponse.json({ requiere2fa: true, token2fa: resultado.token2fa });
+    }
+
     const { usuario, accessToken, refreshToken } = resultado;
 
     const response = NextResponse.json({

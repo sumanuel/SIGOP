@@ -13,6 +13,7 @@ interface UsuarioFila {
   email: string;
   rol: string;
   activo: boolean;
+  dosFactoresActivo: boolean;
   ente: { id: string; nombre: string } | null;
 }
 
@@ -75,6 +76,19 @@ export default function AdminUsuariosPage() {
     setUsuarios((prev) => prev.map((u) => (u.id === usuario.id ? { ...u, activo: !u.activo } : u)));
   }
 
+  async function reiniciarDosFactores(usuario: UsuarioFila) {
+    if (!window.confirm(`¿Quitar la verificación en dos pasos de "${usuario.nombre}"? Podrá volver a activarla desde Seguridad.`)) {
+      return;
+    }
+    const res = await fetch(`/api/admin/usuarios/${usuario.id}/2fa`, { method: 'DELETE' });
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      window.alert(data?.error ?? 'No se pudo reiniciar la verificación.');
+      return;
+    }
+    setUsuarios((prev) => prev.map((u) => (u.id === usuario.id ? { ...u, dosFactoresActivo: false } : u)));
+  }
+
   async function eliminar(usuario: UsuarioFila) {
     if (!window.confirm(`¿Eliminar a "${usuario.nombre}"? Esta acción no se puede deshacer.`)) return;
 
@@ -122,6 +136,7 @@ export default function AdminUsuariosPage() {
                 <th className="px-4 py-2">Rol</th>
                 <th className="px-4 py-2">Ente</th>
                 <th className="px-4 py-2">Estado</th>
+                <th className="px-4 py-2">2FA</th>
                 <th className="px-4 py-2" />
               </tr>
             </thead>
@@ -147,6 +162,24 @@ export default function AdminUsuariosPage() {
                       >
                         {usuario.activo ? 'Activo' : 'Inactivo'}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {usuario.dosFactoresActivo ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="text-success">Activo</span>
+                          {!esUnoMismo && (
+                            <button
+                              type="button"
+                              onClick={() => reiniciarDosFactores(usuario)}
+                              className="text-xs text-primary hover:underline"
+                            >
+                              Reiniciar
+                            </button>
+                          )}
+                        </span>
+                      ) : (
+                        '—'
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-3">

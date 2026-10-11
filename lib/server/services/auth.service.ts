@@ -7,6 +7,7 @@ import {
   type JwtPayload,
 } from '@/lib/server/auth';
 import { registrarAuditoria } from '@/lib/server/services/auditoria.service';
+import { crearTokenLogin2fa } from '@/lib/server/services/dos-factores.service';
 
 /**
  * Valida credenciales y emite un par de tokens. Devuelve `null` tanto si el
@@ -20,6 +21,12 @@ export async function autenticarUsuario(email: string, password: string) {
 
   const valido = await comparePassword(password, usuario.password);
   if (!valido) return null;
+
+  // Con 2FA activo todavía NO se emite sesión: el login se completa en
+  // completarLoginConCodigo (dos-factores.service.ts) con el código TOTP.
+  if (usuario.twoFactorSecret) {
+    return { requiere2fa: true as const, token2fa: crearTokenLogin2fa(usuario.id) };
+  }
 
   const payload: JwtPayload = {
     sub: usuario.id,
@@ -38,7 +45,7 @@ export async function autenticarUsuario(email: string, password: string) {
     entidadId: usuario.id,
   });
 
-  return { usuario, accessToken, refreshToken };
+  return { requiere2fa: false as const, usuario, accessToken, refreshToken };
 }
 
 /** Verifica el refresh token y emite un nuevo par (rotación de refresh token). */
