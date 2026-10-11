@@ -19,38 +19,49 @@ export function ObraDatosGenerales({
   mapaObra,
 }: ObraDatosGeneralesProps) {
   return (
-    <section className="flex flex-col gap-4">
+    <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 shadow-sm">
       <h2 className="text-lg font-semibold">Datos generales</h2>
 
-      <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
         <Dato etiqueta="Ente responsable" valor={ente.siglas ? `${ente.nombre} (${ente.siglas})` : ente.nombre} />
-        {contratista && (
-          <Dato
-            etiqueta="Empresa contratista"
-            valor={contratista.rif ? `${contratista.razonSocial} — ${contratista.rif}` : contratista.razonSocial}
-          />
-        )}
-        {beneficiarios !== null && (
-          <Dato etiqueta="Beneficiarios estimados" valor={beneficiarios.toLocaleString('es-VE')} />
-        )}
-        {capacidadDescripcion && <Dato etiqueta="Capacidad" valor={capacidadDescripcion} />}
-        {direccion && <Dato etiqueta="Dirección" valor={direccion} />}
+        <Dato
+          etiqueta="Empresa contratista"
+          valor={
+            contratista
+              ? contratista.rif
+                ? `${contratista.razonSocial} — ${contratista.rif}`
+                : contratista.razonSocial
+              : null
+          }
+        />
+        <Dato
+          etiqueta="Beneficiarios estimados"
+          valor={beneficiarios !== null ? beneficiarios.toLocaleString('es-VE') : null}
+        />
+        <Dato etiqueta="Capacidad" valor={capacidadDescripcion} />
+        <div className="sm:col-span-2">
+          <Dato etiqueta="Dirección" valor={direccion} />
+        </div>
       </dl>
 
-      {mapaObra && (
+      {mapaObra ? (
         <div className="h-64 w-full overflow-hidden rounded-lg border border-border">
           <ObrasMapLoader obras={[mapaObra]} />
         </div>
+      ) : (
+        <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+          La ubicación en el mapa aún no está disponible para esta obra.
+        </p>
       )}
     </section>
   );
 }
 
-function Dato({ etiqueta, valor }: { etiqueta: string; valor: string }) {
+function Dato({ etiqueta, valor }: { etiqueta: string; valor: string | null }) {
   return (
-    <div>
+    <div className="flex flex-col gap-0.5">
       <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{etiqueta}</dt>
-      <dd className="text-sm">{valor}</dd>
+      <dd className={valor ? 'text-sm' : 'text-sm text-muted-foreground'}>{valor ?? 'No informado'}</dd>
     </div>
   );
 }

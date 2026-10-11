@@ -17,6 +17,21 @@ interface ObraLineaTiempoProps {
   hitos: Hito[];
 }
 
+function Marcador({ completado }: { completado: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`absolute -left-[31px] top-0.5 flex size-5 items-center justify-center rounded-full border-2 ${
+        completado
+          ? 'border-primary bg-primary text-primary-foreground'
+          : 'border-border bg-card text-transparent'
+      }`}
+    >
+      {completado && <Check className="size-3" />}
+    </span>
+  );
+}
+
 export function ObraLineaTiempo({
   fechaAprobacion,
   fechaInicio,
@@ -35,39 +50,39 @@ export function ObraLineaTiempo({
   ];
 
   return (
-    <section className="flex flex-col gap-4">
+    <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 shadow-sm">
       <h2 className="text-lg font-semibold">Fechas y hitos</h2>
 
-      <ol className="flex flex-col gap-3 border-l-2 border-border pl-4">
+      <ol className="ml-2.5 flex flex-col gap-4 border-l-2 border-border pl-5">
         {puntos.map((punto) => (
           <li key={punto.etiqueta} className="relative">
-            <span
-              className={`absolute -left-[21px] flex h-4 w-4 items-center justify-center rounded-full border-2 border-background ${
-                punto.completado ? 'bg-primary' : 'bg-muted'
-              }`}
-            />
+            <Marcador completado={punto.completado} />
             <p className="text-sm font-medium">{punto.etiqueta}</p>
-            <p className="text-xs text-muted-foreground">{formatearFecha(punto.fecha)}</p>
+            <p className="text-sm text-muted-foreground">
+              {formatearFecha(punto.fecha)}
+              {punto.completado ? '' : ' · pendiente'}
+            </p>
           </li>
         ))}
 
         {hitos.map((hito) => (
           <li key={hito.id} className="relative">
-            <span
-              className={`absolute -left-[21px] flex h-4 w-4 items-center justify-center rounded-full border-2 border-background ${
-                hito.completado ? 'bg-primary text-primary-foreground' : 'bg-muted'
-              }`}
-            >
-              {hito.completado && <Check className="size-2.5" />}
-            </span>
-            <p className="text-sm font-medium">{hito.nombre}</p>
-            <p className="text-xs text-muted-foreground">
+            <Marcador completado={hito.completado} />
+            <p className="text-sm font-medium">
+              {hito.nombre}
+              <span className="sr-only">{hito.completado ? ' (completado)' : ' (pendiente)'}</span>
+            </p>
+            <p className="text-sm text-muted-foreground">
               {formatearFecha(hito.fechaReal ?? hito.fechaPlanificada)}
               {!hito.fechaReal && hito.fechaPlanificada && ' (planificado)'}
             </p>
           </li>
         ))}
       </ol>
+
+      {hitos.length === 0 && (
+        <p className="text-sm text-muted-foreground">Aún no se han registrado hitos para esta obra.</p>
+      )}
     </section>
   );
 }

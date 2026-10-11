@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
-import { X } from 'lucide-react';
+import { ImageOff, X } from 'lucide-react';
 
 interface MultimediaItem {
   id: string;
@@ -28,10 +28,21 @@ export function ObraGaleria({ multimedia }: ObraGaleriaProps) {
   const antes = multimedia.find((m) => m.etapa === 'ANTES');
   const despues = multimedia.find((m) => m.etapa === 'DESPUES');
 
+  // Cierra el visor con Escape.
+  useEffect(() => {
+    if (visorIndex === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setVisorIndex(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [visorIndex]);
+
   if (ordenadas.length === 0) {
     return (
-      <div className="flex h-48 items-center justify-center rounded-lg border border-dashed border-border text-sm text-muted-foreground">
-        Sin imágenes cargadas todavía
+      <div className="flex h-40 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-card text-sm text-muted-foreground">
+        <ImageOff className="size-6" aria-hidden="true" />
+        Aún no hay fotografías de esta obra
       </div>
     );
   }
@@ -44,7 +55,8 @@ export function ObraGaleria({ multimedia }: ObraGaleriaProps) {
             key={item.id}
             type="button"
             onClick={() => setVisorIndex(i)}
-            className="relative aspect-video overflow-hidden rounded-md border border-border bg-muted"
+            aria-label={`Ampliar: ${item.titulo ?? 'foto de la obra'}`}
+            className="relative aspect-video overflow-hidden rounded-lg border border-border bg-muted transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             <Image
               src={item.url}
@@ -59,7 +71,7 @@ export function ObraGaleria({ multimedia }: ObraGaleriaProps) {
       </div>
 
       {antes && despues && (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-4 shadow-sm">
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Antes / Después
           </p>
@@ -90,14 +102,18 @@ export function ObraGaleria({ multimedia }: ObraGaleriaProps) {
 
       {visorIndex !== null && (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Visor de fotografía"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
           onClick={() => setVisorIndex(null)}
         >
           <button
             type="button"
             onClick={() => setVisorIndex(null)}
-            aria-label="Cerrar"
-            className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+            aria-label="Cerrar visor"
+            autoFocus
+            className="absolute right-4 top-4 inline-flex size-11 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
             <X className="size-5" />
           </button>

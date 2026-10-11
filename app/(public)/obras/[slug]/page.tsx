@@ -79,7 +79,7 @@ export default async function ObraFichaPage({ params }: PageProps) {
   const qrDataUrl = await QRCode.toDataURL(urlObra, { margin: 1, width: 280 });
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
       <ObraHeader
         nombre={obra.nombre}
         codigo={obra.codigo}
@@ -88,14 +88,15 @@ export default async function ObraFichaPage({ params }: PageProps) {
         estatus={obra.estatus}
         ubicacionTexto={ubicacionTexto}
         destacada={obra.destacada}
+        avanceFisico={obra.avanceFisico}
       />
 
       <div className="mt-6">
         <ObraGaleria multimedia={obra.multimedia} />
       </div>
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-3">
-        <div className="flex flex-col gap-8 lg:col-span-2">
+      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+        <div className="flex flex-col gap-6 lg:col-span-2">
           <ObraDatosGenerales
             ente={obra.ente}
             contratista={obra.contratista}

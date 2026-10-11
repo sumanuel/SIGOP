@@ -39,14 +39,14 @@ export function ObraAcciones({ nombre, url, qrDataUrl, slug }: ObraAccionesProps
   }
 
   return (
-    <section className="flex flex-col gap-4 rounded-lg border border-border p-4">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Acciones</h2>
+    <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 shadow-sm">
+      <h2 className="text-lg font-semibold">Compartir y equipo</h2>
 
       <Link
         href={`/obras/${slug}/equipo`}
-        className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
-        <Users className="size-4" />
+        <Users className="size-4" aria-hidden="true" />
         Ver equipo de trabajo
       </Link>
 
@@ -54,23 +54,37 @@ export function ObraAcciones({ nombre, url, qrDataUrl, slug }: ObraAccionesProps
         <button
           type="button"
           onClick={compartir}
-          className="inline-flex flex-1 items-center justify-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-muted"
+          className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-md border border-border px-3 py-2 text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <Share2 className="size-4" />
+          <Share2 className="size-4" aria-hidden="true" />
           Compartir
         </button>
         <button
           type="button"
           onClick={copiarEnlace}
-          aria-label="Copiar enlace"
-          className="inline-flex items-center justify-center rounded-md border border-border px-3 py-2 hover:bg-muted"
+          aria-label={copiado ? 'Enlace copiado' : 'Copiar enlace'}
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-border px-3 py-2 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          {copiado ? <Check className="size-4 text-emerald-600" /> : <Copy className="size-4" />}
+          {copiado ? (
+            <Check className="size-4 text-emerald-700 dark:text-emerald-400" aria-hidden="true" />
+          ) : (
+            <Copy className="size-4" aria-hidden="true" />
+          )}
         </button>
+        <span role="status" aria-live="polite" className="sr-only">
+          {copiado ? 'Enlace copiado al portapapeles' : ''}
+        </span>
       </div>
 
       <div className="flex flex-col items-center gap-2 border-t border-border pt-4">
-        <Image src={qrDataUrl} alt="Código QR de la obra" width={140} height={140} unoptimized />
+        <Image
+          src={qrDataUrl}
+          alt="Código QR de la obra"
+          width={140}
+          height={140}
+          unoptimized
+          className="rounded-md border border-border bg-white p-1"
+        />
         <p className="text-center text-xs text-muted-foreground">
           Escanea para ver esta obra desde el teléfono — ideal para la valla informativa en campo.
         </p>
