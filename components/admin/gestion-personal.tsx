@@ -177,7 +177,7 @@ export function GestionPersonal({
                       {a.area && <p className="text-xs text-muted-foreground">Área: {a.area}</p>}
                     </div>
                     {a.persona.consentimientoPublicacion ? (
-                      <ShieldCheck className="size-4 shrink-0 text-emerald-600" aria-label="Con consentimiento" />
+                      <ShieldCheck className="size-4 shrink-0 text-success" aria-label="Con consentimiento" />
                     ) : (
                       <ShieldOff className="size-4 shrink-0 text-muted-foreground" aria-label="Sin consentimiento" />
                     )}

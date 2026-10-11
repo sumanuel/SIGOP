@@ -161,7 +161,7 @@ export function MapSidebar({
             icono={CheckCircle2}
             label="Culminadas / inauguradas"
             valor={culminadas}
-            colorClase="border-emerald-300/60 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+            colorClase="border-success/30 bg-success/10 text-success"
           />
           <ResumenItem
             icono={TrendingUp}

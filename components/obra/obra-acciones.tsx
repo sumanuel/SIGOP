@@ -66,7 +66,7 @@ export function ObraAcciones({ nombre, url, qrDataUrl, slug }: ObraAccionesProps
           className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-border px-3 py-2 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {copiado ? (
-            <Check className="size-4 text-emerald-700 dark:text-emerald-400" aria-hidden="true" />
+            <Check className="size-4 text-success" aria-hidden="true" />
           ) : (
             <Copy className="size-4" aria-hidden="true" />
           )}

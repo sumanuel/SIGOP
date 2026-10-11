@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
-import { ImageOff, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ImageOff, X } from 'lucide-react';
 
 interface MultimediaItem {
   id: string;
@@ -16,9 +16,14 @@ interface ObraGaleriaProps {
   multimedia: MultimediaItem[];
 }
 
+const botonVisorClase =
+  'absolute top-1/2 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white';
+
 export function ObraGaleria({ multimedia }: ObraGaleriaProps) {
   const [visorIndex, setVisorIndex] = useState<number | null>(null);
   const [posicionSlider, setPosicionSlider] = useState(50);
+  const visorRef = useRef<HTMLDivElement>(null);
+  const abridorRef = useRef<HTMLElement | null>(null);
 
   const ordenadas = useMemo(
     () => [...multimedia].sort((a, b) => (b.esPortada ? 1 : 0) - (a.esPortada ? 1 : 0)),
@@ -28,15 +33,37 @@ export function ObraGaleria({ multimedia }: ObraGaleriaProps) {
   const antes = multimedia.find((m) => m.etapa === 'ANTES');
   const despues = multimedia.find((m) => m.etapa === 'DESPUES');
 
-  // Cierra el visor con Escape.
+  const visorAbierto = visorIndex !== null;
+  const total = ordenadas.length;
+
+  // Teclado del visor: Escape cierra, flechas navegan, Tab queda atrapado
+  // dentro del diálogo y al cerrar el foco vuelve a la miniatura que lo abrió.
   useEffect(() => {
-    if (visorIndex === null) return;
+    if (!visorAbierto) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setVisorIndex(null);
+      else if (e.key === 'ArrowRight') setVisorIndex((i) => (i === null ? i : (i + 1) % total));
+      else if (e.key === 'ArrowLeft') setVisorIndex((i) => (i === null ? i : (i - 1 + total) % total));
+      else if (e.key === 'Tab') {
+        const enfocables = visorRef.current?.querySelectorAll<HTMLElement>('button:not([disabled])');
+        if (!enfocables || enfocables.length === 0) return;
+        const primero = enfocables[0];
+        const ultimo = enfocables[enfocables.length - 1];
+        if (e.shiftKey && document.activeElement === primero) {
+          e.preventDefault();
+          ultimo.focus();
+        } else if (!e.shiftKey && document.activeElement === ultimo) {
+          e.preventDefault();
+          primero.focus();
+        }
+      }
     };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [visorIndex]);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      abridorRef.current?.focus();
+    };
+  }, [visorAbierto, total]);
 
   if (ordenadas.length === 0) {
     return (
@@ -54,7 +81,10 @@ export function ObraGaleria({ multimedia }: ObraGaleriaProps) {
           <button
             key={item.id}
             type="button"
-            onClick={() => setVisorIndex(i)}
+            onClick={(e) => {
+              abridorRef.current = e.currentTarget;
+              setVisorIndex(i);
+            }}
             aria-label={`Ampliar: ${item.titulo ?? 'foto de la obra'}`}
             className="relative aspect-video overflow-hidden rounded-lg border border-border bg-muted transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
@@ -102,6 +132,7 @@ export function ObraGaleria({ multimedia }: ObraGaleriaProps) {
 
       {visorIndex !== null && (
         <div
+          ref={visorRef}
           role="dialog"
           aria-modal="true"
           aria-label="Visor de fotografía"
@@ -117,7 +148,7 @@ export function ObraGaleria({ multimedia }: ObraGaleriaProps) {
           >
             <X className="size-5" />
           </button>
-          <div className="relative h-[80vh] w-full max-w-4xl">
+          <div className="relative h-[80vh] w-full max-w-4xl" onClick={(e) => e.stopPropagation()}>
             <Image
               src={ordenadas[visorIndex].url}
               alt={ordenadas[visorIndex].titulo ?? 'Foto de la obra'}
@@ -126,6 +157,39 @@ export function ObraGaleria({ multimedia }: ObraGaleriaProps) {
               unoptimized
             />
           </div>
+          {total > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setVisorIndex((visorIndex - 1 + total) % total);
+                }}
+                aria-label="Foto anterior"
+                className={`${botonVisorClase} left-2 sm:left-4`}
+              >
+                <ChevronLeft className="size-6" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setVisorIndex((visorIndex + 1) % total);
+                }}
+                aria-label="Foto siguiente"
+                className={`${botonVisorClase} right-2 sm:right-4`}
+              >
+                <ChevronRight className="size-6" />
+              </button>
+            </>
+          )}
+          <p
+            aria-live="polite"
+            className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-sm text-white"
+          >
+            {visorIndex + 1} / {total}
+            {ordenadas[visorIndex].titulo ? ` · ${ordenadas[visorIndex].titulo}` : ''}
+          </p>
         </div>
       )}
     </div>

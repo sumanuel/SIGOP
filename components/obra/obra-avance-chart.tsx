@@ -63,7 +63,7 @@ export function ObraAvanceChart({ avanceFisico, avanceFinanciero, historial, atr
               className={`inline-flex w-fit items-center gap-2 rounded-md px-3 py-1.5 font-medium ${
                 atrasoDias > 0
                   ? 'bg-destructive/10 text-destructive'
-                  : 'bg-emerald-600/10 text-emerald-800 dark:text-emerald-400'
+                  : 'bg-success/10 text-success'
               }`}
             >
               {atrasoDias > 0 ? (
@@ -85,7 +85,7 @@ export function ObraAvanceChart({ avanceFisico, avanceFinanciero, historial, atr
                   Físico
                 </span>
                 <span className="inline-flex items-center gap-1.5">
-                  <span aria-hidden="true" className="h-0.5 w-4 rounded" style={{ backgroundColor: 'var(--color-chart-2)' }} />
+                  <span aria-hidden="true" className="w-4 border-t-2 border-dashed" style={{ borderColor: 'var(--color-chart-2)' }} />
                   Financiero
                 </span>
               </div>
@@ -113,6 +113,7 @@ export function ObraAvanceChart({ avanceFisico, avanceFinanciero, historial, atr
                       dataKey="avanceFinanciero"
                       stroke="var(--color-chart-2)"
                       strokeWidth={2}
+                      strokeDasharray="5 4"
                       dot={false}
                     />
                   </LineChart>

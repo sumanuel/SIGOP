@@ -2,7 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Pencil, Trash2, Check, X, type LucideIcon } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, AlertTriangle, type LucideIcon } from 'lucide-react';
+import { temaConPocoContraste } from '@/lib/contraste';
+
+function AvisoContraste({ color }: { color: string }) {
+  const tema = temaConPocoContraste(color);
+  if (!tema) return null;
+  return (
+    <span className="mt-1 flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400">
+      <AlertTriangle className="size-3 shrink-0" aria-hidden="true" />
+      Casi no se ve en modo {tema}
+    </span>
+  );
+}
 
 interface CampoConfig {
   key: string;
@@ -208,6 +220,7 @@ export function CatalogoEditor({ recurso, titulo, descripcion, campos, icono: Ic
                         onChange={(e) => setValoresNuevo((v) => ({ ...v, [c.key]: e.target.value }))}
                         className={campoClase}
                       />
+                      {c.tipo === 'color' && <AvisoContraste color={valoresNuevo[c.key]} />}
                     </td>
                   ))}
                   <td className="px-2 py-1.5">
@@ -244,19 +257,25 @@ export function CatalogoEditor({ recurso, titulo, descripcion, campos, icono: Ic
                     {campos.map((c) => (
                       <td key={c.key} className="px-2 py-1.5">
                         {editando ? (
-                          <input
-                            type={c.tipo === 'color' ? 'color' : c.tipo === 'number' ? 'number' : 'text'}
-                            value={valoresEdicion[c.key] ?? ''}
-                            onChange={(e) => setValoresEdicion((v) => ({ ...v, [c.key]: e.target.value }))}
-                            className={campoClase}
-                          />
-                        ) : c.tipo === 'color' && registro[c.key] ? (
-                          <span className="inline-flex items-center gap-1.5">
-                            <span
-                              className="inline-block size-3.5 rounded-full border border-border"
-                              style={{ backgroundColor: String(registro[c.key]) }}
+                          <>
+                            <input
+                              type={c.tipo === 'color' ? 'color' : c.tipo === 'number' ? 'number' : 'text'}
+                              value={valoresEdicion[c.key] ?? ''}
+                              onChange={(e) => setValoresEdicion((v) => ({ ...v, [c.key]: e.target.value }))}
+                              className={campoClase}
                             />
-                            {registro[c.key]}
+                            {c.tipo === 'color' && <AvisoContraste color={valoresEdicion[c.key] ?? ''} />}
+                          </>
+                        ) : c.tipo === 'color' && registro[c.key] ? (
+                          <span className="inline-flex flex-col gap-0.5">
+                            <span className="inline-flex items-center gap-1.5">
+                              <span
+                                className="inline-block size-3.5 rounded-full border border-border"
+                                style={{ backgroundColor: String(registro[c.key]) }}
+                              />
+                              {registro[c.key]}
+                            </span>
+                            <AvisoContraste color={String(registro[c.key])} />
                           </span>
                         ) : (
                           String(registro[c.key] ?? '—')
