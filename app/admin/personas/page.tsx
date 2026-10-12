@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus, ShieldCheck, ShieldOff } from 'lucide-react';
+import { FileSpreadsheet, Plus, ShieldCheck, ShieldOff } from 'lucide-react';
 import { AdminNav } from '@/components/admin/admin-nav';
 
 interface PersonaFila {
@@ -74,13 +74,22 @@ export default function AdminPersonasPage() {
             Directorio único — una persona puede estar asignada a varias obras.
           </p>
         </div>
-        <Link
-          href="/admin/personas/nueva"
-          className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
-          <Plus className="size-4" />
-          Nueva persona
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/admin/personas/importar"
+            className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-muted"
+          >
+            <FileSpreadsheet className="size-4" aria-hidden="true" />
+            Importar desde Excel
+          </Link>
+          <Link
+            href="/admin/personas/nueva"
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            <Plus className="size-4" />
+            Nueva persona
+          </Link>
+        </div>
       </div>
 
       {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
