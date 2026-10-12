@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { X } from 'lucide-react';
 
 interface PersonaPerfilModalProps {
@@ -14,6 +15,7 @@ interface PersonaPerfilModalProps {
     especialidad: string | null;
     aniosExperiencia: number | null;
     bioCorta: string | null;
+    otrasObras: { nombre: string; slug: string; cargo: string }[];
   };
   onCerrar: () => void;
 }
@@ -81,6 +83,24 @@ export function PersonaPerfilModal({ cargo, area, fechaIngreso, persona, onCerra
         </dl>
 
         {persona.bioCorta && <p className="text-sm text-muted-foreground">{persona.bioCorta}</p>}
+
+        {persona.otrasObras.length > 0 && (
+          <div className="w-full border-t border-border pt-3 text-left">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              También ha participado en
+            </h3>
+            <ul className="mt-2 flex flex-col gap-1.5 text-sm">
+              {persona.otrasObras.map((obra) => (
+                <li key={obra.slug}>
+                  <Link href={`/obras/${obra.slug}`} className="font-medium text-primary hover:underline">
+                    {obra.nombre}
+                  </Link>
+                  <span className="text-xs text-muted-foreground"> · {obra.cargo}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );

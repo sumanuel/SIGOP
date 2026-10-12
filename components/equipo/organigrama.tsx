@@ -18,6 +18,7 @@ export interface AsignacionPersonal {
     especialidad: string | null;
     aniosExperiencia: number | null;
     bioCorta: string | null;
+    otrasObras: { nombre: string; slug: string; cargo: string }[];
   } | null;
 }
 
@@ -25,21 +26,39 @@ interface OrganigramaProps {
   personal: AsignacionPersonal[];
 }
 
+function normalizar(texto: string): string {
+  return texto
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
 // Organigrama simple por niveles (PLAN_PROYECTO.md sección 3.1): cada fila
 // es un nivel jerárquico, cada tarjeta una persona (o solo su cargo, si no
 // dio consentimiento de publicación — ver obtenerObraDetalle en el servicio).
 export function Organigrama({ personal }: OrganigramaProps) {
   const [seleccionada, setSeleccionada] = useState<AsignacionPersonal | null>(null);
+  const [busqueda, setBusqueda] = useState('');
+
+  // Busca por nombre (solo de quienes autorizaron publicarlo), cargo o área.
+  const filtrado = useMemo(() => {
+    const termino = normalizar(busqueda);
+    if (!termino) return personal;
+    return personal.filter((a) =>
+      normalizar([a.persona?.nombreCompleto, a.cargo, a.area].filter(Boolean).join(' ')).includes(termino)
+    );
+  }, [personal, busqueda]);
 
   const niveles = useMemo(() => {
     const grupos = new Map<number, AsignacionPersonal[]>();
-    for (const asignacion of personal) {
+    for (const asignacion of filtrado) {
       const lista = grupos.get(asignacion.nivelJerarquico) ?? [];
       lista.push(asignacion);
       grupos.set(asignacion.nivelJerarquico, lista);
     }
     return Array.from(grupos.entries()).sort(([a], [b]) => a - b);
-  }, [personal]);
+  }, [filtrado]);
 
   if (personal.length === 0) {
     return <p className="text-sm text-muted-foreground">Aún no se ha registrado personal para esta obra.</p>;
@@ -47,6 +66,29 @@ export function Organigrama({ personal }: OrganigramaProps) {
 
   return (
     <div className="flex flex-col gap-8">
+      {personal.length > 4 && (
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="buscar-equipo" className="text-sm font-medium">
+            Buscar en el equipo
+          </label>
+          <input
+            id="buscar-equipo"
+            type="search"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Nombre, cargo o área"
+            className="w-full max-w-sm rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring/50"
+          />
+          <p role="status" aria-live="polite" className="text-xs text-muted-foreground">
+            {busqueda ? `${filtrado.length} de ${personal.length} integrantes` : `${personal.length} integrantes`}
+          </p>
+        </div>
+      )}
+
+      {filtrado.length === 0 && (
+        <p className="text-sm text-muted-foreground">Ningún integrante coincide con «{busqueda}».</p>
+      )}
+
       {niveles.map(([nivel, asignaciones]) => (
         <div key={nivel} className="flex flex-col gap-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">

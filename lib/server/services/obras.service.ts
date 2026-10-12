@@ -131,7 +131,20 @@ const INCLUDE_DETALLE = {
   hitos: { orderBy: { orden: 'asc' as const } },
   multimedia: { orderBy: { orden: 'asc' as const } },
   personal: {
-    include: { persona: true, cargo: true },
+    include: {
+      // Otras obras de la persona (perfil público): solo asignaciones visibles
+      // en obras PUBLICADAS; la obra actual se descarta al armar la respuesta.
+      persona: {
+        include: {
+          asignaciones: {
+            where: { visiblePublico: true, obra: { estadoPublicacion: 'PUBLICADO' as const } },
+            include: { obra: { select: { id: true, nombre: true, slug: true } }, cargo: { select: { nombre: true } } },
+            orderBy: { createdAt: 'desc' as const },
+          },
+        },
+      },
+      cargo: true,
+    },
   },
   // Solo aprobados: los pendientes/rechazados se moderan en /admin/reportes,
   // nunca llegan a la ficha pública. No se selecciona `correo` (privado).
@@ -201,6 +214,9 @@ export async function obtenerObraDetalle(idOrSlug: string, opts: ObtenerObraDeta
               especialidad: asignacion.persona.especialidad,
               aniosExperiencia: asignacion.persona.aniosExperiencia,
               bioCorta: asignacion.persona.bioCorta,
+              otrasObras: asignacion.persona.asignaciones
+                .filter((otra) => otra.obra.id !== obra.id)
+                .map((otra) => ({ nombre: otra.obra.nombre, slug: otra.obra.slug, cargo: otra.cargo.nombre })),
             }
           : null,
       };
