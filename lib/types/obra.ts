@@ -26,4 +26,6 @@ export interface ObraMapa {
   lng: number;
   /** Solo para obras lineales (vías, tuberías, tendidos). `null` si la obra es puntual. */
   trazado: [number, number][] | null;
+  /** LINEA (vía, tubería) o AREA (terreno, urbanismo: el polígono se cierra solo). Sin valor = LINEA. */
+  trazadoTipo?: 'LINEA' | 'AREA';
 }

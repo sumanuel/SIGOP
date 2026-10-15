@@ -63,6 +63,7 @@ export default async function ObraFichaPage({ params }: PageProps) {
           lat: obra.lat,
           lng: obra.lng,
           trazado: obra.trazado,
+          trazadoTipo: obra.trazadoTipo,
         }
       : null;
 

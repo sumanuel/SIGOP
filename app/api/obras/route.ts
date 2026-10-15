@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { ZodError } from 'zod';
 import { listarObrasParaMapa, crearObra } from '@/lib/server/services/obras.service';
-import { crearObraSchema } from '@/lib/server/validators/obra.schema';
+import { crearObraSchema, errorDeTrazado } from '@/lib/server/validators/obra.schema';
 import { requireAuth, AuthError } from '@/lib/server/require-auth';
 
 // GET /api/obras — lista pública de obras publicadas, para el mapa principal.
@@ -23,6 +23,8 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const datos = crearObraSchema.parse(body);
+    const errorTrazado = errorDeTrazado(datos);
+    if (errorTrazado) return NextResponse.json({ error: errorTrazado }, { status: 400 });
 
     const obra = await crearObra(datos, { usuarioId: usuario.sub });
     return NextResponse.json({ obra }, { status: 201 });

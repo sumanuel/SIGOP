@@ -88,6 +88,7 @@ export default async function EditarObraPage({ params }: PageProps) {
             lng: obra.lng,
             tieneTrazado: Boolean(obra.trazado),
             trazado: obra.trazado ?? [],
+            trazadoTipo: obra.trazadoTipo ?? 'LINEA',
             presupuestoAprobado: Number(obra.presupuestoAprobado.toString()),
             montoEjecutado: Number(obra.montoEjecutado.toString()),
             moneda: obra.moneda,

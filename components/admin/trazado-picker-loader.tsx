@@ -14,6 +14,7 @@ const TrazadoPickerMap = dynamic(() => import('./trazado-picker-map'), {
 interface TrazadoPickerLoaderProps {
   puntos: [number, number][];
   centro: [number, number] | null;
+  tipo: 'LINEA' | 'AREA';
   onCambiar: (puntos: [number, number][]) => void;
 }
 

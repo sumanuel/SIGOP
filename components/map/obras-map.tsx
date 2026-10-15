@@ -224,16 +224,32 @@ function esCluster(
 // necesita popup/interacción propia y así se aprovecha el renderizado
 // vectorial del mapa. No depende del viewport, así que solo se sincroniza
 // cuando cambia la lista de obras (no en cada `moveend`).
-function construirFeatureCollectionTrazados(obras: ObraMapa[]) {
+function construirFeatureCollectionTrazados(obras: ObraMapa[]): GeoJSON.FeatureCollection {
   return {
-    type: 'FeatureCollection' as const,
+    type: 'FeatureCollection',
     features: obras
       .filter((o): o is ObraMapa & { trazado: [number, number][] } => Boolean(o.trazado && o.trazado.length >= 2))
-      .map((o) => ({
-        type: 'Feature' as const,
-        properties: { color: o.tipoObra.color },
-        geometry: { type: 'LineString' as const, coordinates: o.trazado },
-      })),
+      .flatMap((o): GeoJSON.Feature[] => {
+        const propiedades = { color: o.tipoObra.color };
+        // Un área (terreno, urbanismo) es un polígono: el anillo se cierra
+        // repitiendo el primer vértice. Sin tipo se asume una línea.
+        if (o.trazadoTipo === 'AREA' && o.trazado.length >= 3) {
+          return [
+            {
+              type: 'Feature',
+              properties: propiedades,
+              geometry: { type: 'Polygon', coordinates: [[...o.trazado, o.trazado[0]]] },
+            },
+          ];
+        }
+        return [
+          {
+            type: 'Feature',
+            properties: propiedades,
+            geometry: { type: 'LineString', coordinates: o.trazado },
+          },
+        ];
+      }),
   };
 }
 
@@ -247,6 +263,14 @@ function sincronizarTrazados(mapa: maplibregl.Map, obras: ObraMapa[]) {
   }
 
   mapa.addSource('trazados', { type: 'geojson', data });
+  mapa.addLayer({
+    id: 'trazados-area',
+    type: 'fill',
+    source: 'trazados',
+    filter: ['==', ['geometry-type'], 'Polygon'],
+    paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.25 },
+  });
+  // La capa `line` dibuja tanto las líneas como el contorno de las áreas.
   mapa.addLayer({
     id: 'trazados-line',
     type: 'line',

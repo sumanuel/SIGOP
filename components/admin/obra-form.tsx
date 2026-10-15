@@ -25,6 +25,7 @@ interface ObraFormValues {
   lng: number | null;
   tieneTrazado: boolean;
   trazado: [number, number][];
+  trazadoTipo: 'LINEA' | 'AREA';
   presupuestoAprobado: number;
   montoEjecutado: number;
   moneda: string;
@@ -55,6 +56,7 @@ const VALORES_VACIOS: ObraFormValues = {
   lng: null,
   tieneTrazado: false,
   trazado: [],
+  trazadoTipo: 'LINEA',
   presupuestoAprobado: 0,
   montoEjecutado: 0,
   moneda: 'VES',
@@ -120,8 +122,11 @@ export function ObraForm({ catalogos, obraId, valoresIniciales }: ObraFormProps)
       return;
     }
 
-    if (valores.tieneTrazado && valores.trazado.length < 2) {
-      setError('Dibuja el trazado en el mapa (al menos 2 puntos) o desmarca la opción de obra lineal.');
+    const puntosMinimos = valores.trazadoTipo === 'AREA' ? 3 : 2;
+    if (valores.tieneTrazado && valores.trazado.length < puntosMinimos) {
+      setError(
+        `Dibuja ${valores.trazadoTipo === 'AREA' ? 'el área' : 'el trazado'} en el mapa (al menos ${puntosMinimos} puntos) o desmarca la opción de trazado.`
+      );
       return;
     }
 
@@ -145,7 +150,9 @@ export function ObraForm({ catalogos, obraId, valoresIniciales }: ObraFormProps)
       direccion: valores.direccion || undefined,
       lat: valores.lat,
       lng: valores.lng,
-      trazado: valores.tieneTrazado && valores.trazado.length >= 2 ? valores.trazado : esEdicion ? null : undefined,
+      trazado:
+        valores.tieneTrazado && valores.trazado.length >= puntosMinimos ? valores.trazado : esEdicion ? null : undefined,
+      trazadoTipo: valores.tieneTrazado ? valores.trazadoTipo : undefined,
       presupuestoAprobado: valores.presupuestoAprobado,
       montoEjecutado: valores.montoEjecutado,
       moneda: valores.moneda,
@@ -373,18 +380,36 @@ export function ObraForm({ catalogos, obraId, valoresIniciales }: ObraFormProps)
               onChange={(e) => actualizar('tieneTrazado', e.target.checked)}
               className="size-4 rounded border-input"
             />
-            ¿Esta obra tiene trazado? (vía, tubería, tendido eléctrico)
+            ¿Esta obra tiene trazado? (vía, tubería, tendido eléctrico, terreno o urbanismo)
           </label>
 
           {valores.tieneTrazado && (
             <>
+              <fieldset className="flex flex-wrap items-center gap-4 text-sm">
+                <legend className="sr-only">Tipo de trazado</legend>
+                {(['LINEA', 'AREA'] as const).map((tipo) => (
+                  <label key={tipo} className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="trazadoTipo"
+                      checked={valores.trazadoTipo === tipo}
+                      onChange={() => actualizar('trazadoTipo', tipo)}
+                      className="size-4"
+                    />
+                    {tipo === 'LINEA' ? 'Línea (vía, tubería, tendido)' : 'Área (terreno, urbanismo, parque)'}
+                  </label>
+                ))}
+              </fieldset>
               <p className="text-sm text-muted-foreground">
-                Haz clic en el mapa para ir agregando puntos del trazado, en orden.
+                {valores.trazadoTipo === 'AREA'
+                  ? 'Haz clic en el mapa para marcar las esquinas del área, en orden (el contorno se cierra solo).'
+                  : 'Haz clic en el mapa para ir agregando puntos del trazado, en orden.'}
               </p>
               <div className="h-72 w-full overflow-hidden rounded-lg border border-border">
                 <TrazadoPickerLoader
                   puntos={valores.trazado}
                   centro={valores.lat !== null && valores.lng !== null ? [valores.lng, valores.lat] : null}
+                  tipo={valores.trazadoTipo}
                   onCambiar={(trazado) => actualizar('trazado', trazado)}
                 />
               </div>

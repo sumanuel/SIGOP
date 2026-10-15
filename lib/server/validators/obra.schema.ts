@@ -29,12 +29,14 @@ export const crearObraSchema = z.object({
   lat: z.number().min(-90).max(90),
   lng: z.number().min(-180).max(180),
 
-  // Solo para obras lineales (vías, tuberías, tendidos eléctricos). Se
-  // guarda como LINESTRING vía `guardarTrazado()` en obras.service.ts.
+  // Solo para obras lineales (vías, tuberías, tendidos eléctricos) o de área
+  // (terrenos, urbanismos, parques). Se guarda como LINESTRING o POLYGON vía
+  // `guardarTrazado()` en obras.service.ts, según `trazadoTipo`.
   trazado: z
     .array(z.tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)]))
     .min(2)
     .optional(),
+  trazadoTipo: z.enum(['LINEA', 'AREA']).optional(),
 
   presupuestoAprobado: z.number().nonnegative().default(0),
   montoEjecutado: z.number().nonnegative().default(0),
@@ -51,6 +53,18 @@ export const crearObraSchema = z.object({
 });
 
 export type CrearObraInput = z.infer<typeof crearObraSchema>;
+
+/**
+ * Regla que depende de dos campos a la vez (no cabe en el schema sin romper
+ * `.partial()`): un área necesita al menos 3 puntos para cerrar un polígono.
+ * Devuelve el mensaje de error, o null si está bien.
+ */
+export function errorDeTrazado(datos: { trazado?: unknown[] | null; trazadoTipo?: 'LINEA' | 'AREA' }): string | null {
+  if (datos.trazadoTipo === 'AREA' && datos.trazado && datos.trazado.length < 3) {
+    return 'Un área necesita al menos 3 puntos.';
+  }
+  return null;
+}
 
 // En una actualización todos los campos son opcionales. `estadoPublicacion`
 // NO se incluye aquí a propósito: cambiarlo solo es posible a través de

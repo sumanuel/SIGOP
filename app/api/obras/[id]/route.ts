@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { ZodError } from 'zod';
 import { obtenerObraDetalle, actualizarObra, eliminarObra } from '@/lib/server/services/obras.service';
-import { actualizarObraSchema } from '@/lib/server/validators/obra.schema';
+import { actualizarObraSchema, errorDeTrazado } from '@/lib/server/validators/obra.schema';
 import { requireAuth, AuthError } from '@/lib/server/require-auth';
 
 interface RouteParams {
@@ -42,6 +42,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     const body = await request.json();
     const datos = actualizarObraSchema.parse(body);
+    const errorTrazado = errorDeTrazado(datos);
+    if (errorTrazado) return NextResponse.json({ error: errorTrazado }, { status: 400 });
 
     const obra = await actualizarObra(id, datos, { usuarioId: usuario.sub });
     if (!obra) {
