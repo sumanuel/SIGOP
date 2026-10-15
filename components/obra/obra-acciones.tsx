@@ -38,6 +38,19 @@ export function ObraAcciones({ nombre, url, qrDataUrl, slug }: ObraAccionesProps
     }
   }
 
+  // Enlaces de compartir directos de cada red: sin botones ni scripts de
+  // terceros, que rastrearían a quien visita el portal.
+  const texto = `${nombre} — obra pública en SIGOP`;
+  const u = encodeURIComponent(url);
+  const t = encodeURIComponent(texto);
+  const redes = [
+    { nombre: 'WhatsApp', href: `https://wa.me/?text=${encodeURIComponent(`${texto} ${url}`)}` },
+    { nombre: 'Facebook', href: `https://www.facebook.com/sharer/sharer.php?u=${u}` },
+    { nombre: 'X', href: `https://x.com/intent/post?text=${t}&url=${u}` },
+    { nombre: 'Telegram', href: `https://t.me/share/url?url=${u}&text=${t}` },
+    { nombre: 'Correo', href: `mailto:?subject=${t}&body=${encodeURIComponent(`${texto}\n${url}`)}` },
+  ];
+
   return (
     <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 shadow-sm">
       <h2 className="text-lg font-semibold print:hidden">Compartir y equipo</h2>
@@ -83,6 +96,25 @@ export function ObraAcciones({ nombre, url, qrDataUrl, slug }: ObraAccionesProps
         <span role="status" aria-live="polite" className="sr-only">
           {copiado ? 'Enlace copiado al portapapeles' : ''}
         </span>
+      </div>
+
+      <div className="flex flex-col gap-2 print:hidden">
+        <p className="text-xs font-medium text-muted-foreground">Compartir en</p>
+        <ul className="flex flex-wrap gap-2">
+          {redes.map((red) => (
+            <li key={red.nombre}>
+              <a
+                href={red.href}
+                target={red.nombre === 'Correo' ? undefined : '_blank'}
+                rel="noopener noreferrer"
+                aria-label={`Compartir en ${red.nombre}${red.nombre === 'Correo' ? '' : ' (se abre en otra pestaña)'}`}
+                className="inline-flex min-h-11 items-center rounded-md border border-border px-3 py-2 text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {red.nombre}
+              </a>
+            </li>
+          ))}
+        </ul>
       </div>
 
       <div className="flex flex-col items-center gap-2 border-t border-border pt-4 print:border-0 print:pt-0">
