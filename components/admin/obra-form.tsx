@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useRef, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import { Check } from 'lucide-react';
 import UbicacionPickerLoader from '@/components/admin/ubicacion-picker-loader';
 import TrazadoPickerLoader from '@/components/admin/trazado-picker-loader';
 import { slugify } from '@/lib/slugify';
@@ -69,6 +70,10 @@ const VALORES_VACIOS: ObraFormValues = {
   destacada: false,
 };
 
+// Al crear una obra el formulario se recorre por pasos (es largo y asusta);
+// al editar se muestra completo para poder saltar directo a lo que se cambia.
+const PASOS = ['Datos generales', 'Ubicación', 'Finanzas y fechas', 'Impacto y resumen'];
+
 interface ObraFormProps {
   catalogos: Catalogos;
   obraId?: string;
@@ -78,6 +83,10 @@ interface ObraFormProps {
 export function ObraForm({ catalogos, obraId, valoresIniciales }: ObraFormProps) {
   const router = useRouter();
   const esEdicion = Boolean(obraId);
+  const modoPasos = !esEdicion;
+  const [paso, setPaso] = useState(1);
+  const formRef = useRef<HTMLFormElement>(null);
+  const mostrar = (n: number) => !modoPasos || paso === n;
 
   const [valores, setValores] = useState<ObraFormValues>({ ...VALORES_VACIOS, ...valoresIniciales });
   const [slugTocado, setSlugTocado] = useState(esEdicion); // en edición no se auto-regenera
@@ -113,12 +122,57 @@ export function ObraForm({ catalogos, obraId, valoresIniciales }: ObraFormProps)
     setValores((prev) => ({ ...prev, municipioId, parroquiaId: '' }));
   }
 
+  /** Revisa el paso actual: campos obligatorios (validación nativa) y mapa. Devuelve el error, o null. */
+  function validarPaso(n: number): string | null {
+    const campos = formRef.current?.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+      'input, select, textarea'
+    );
+    for (const campo of campos ?? []) {
+      if (!campo.checkValidity()) {
+        campo.reportValidity();
+        return 'Completa los campos obligatorios de este paso.';
+      }
+    }
+    if (n === 2) {
+      if (valores.lat === null || valores.lng === null) {
+        return 'Selecciona la ubicación de la obra haciendo clic en el mapa.';
+      }
+      const minimo = valores.trazadoTipo === 'AREA' ? 3 : 2;
+      if (valores.tieneTrazado && valores.trazado.length < minimo) {
+        return `Dibuja ${valores.trazadoTipo === 'AREA' ? 'el área' : 'el trazado'} en el mapa (al menos ${minimo} puntos) o desmarca la opción de trazado.`;
+      }
+    }
+    return null;
+  }
+
+  function irAPaso(n: number) {
+    setPaso(n);
+    formRef.current?.scrollIntoView({ block: 'start' });
+  }
+
+  function avanzar() {
+    const problema = validarPaso(paso);
+    if (problema) {
+      setError(problema);
+      return;
+    }
+    setError(null);
+    irAPaso(paso + 1);
+  }
+
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
 
+    // Enter en un paso intermedio equivale a "Siguiente", no a guardar.
+    if (modoPasos && paso < PASOS.length) {
+      avanzar();
+      return;
+    }
+
     if (valores.lat === null || valores.lng === null) {
       setError('Selecciona la ubicación de la obra haciendo clic en el mapa.');
+      if (modoPasos) setPaso(2);
       return;
     }
 
@@ -127,6 +181,7 @@ export function ObraForm({ catalogos, obraId, valoresIniciales }: ObraFormProps)
       setError(
         `Dibuja ${valores.trazadoTipo === 'AREA' ? 'el área' : 'el trazado'} en el mapa (al menos ${puntosMinimos} puntos) o desmarca la opción de trazado.`
       );
+      if (modoPasos) setPaso(2);
       return;
     }
 
@@ -188,8 +243,50 @@ export function ObraForm({ catalogos, obraId, valoresIniciales }: ObraFormProps)
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-8">
-      <Seccion titulo="Datos generales">
+    <form ref={formRef} onSubmit={onSubmit} className="flex flex-col gap-8">
+      {modoPasos && (
+        <nav aria-label="Pasos para crear la obra">
+          <ol className="flex flex-wrap gap-2 text-sm">
+            {PASOS.map((nombre, i) => {
+              const n = i + 1;
+              const actual = n === paso;
+              const hecho = n < paso;
+              return (
+                <li key={nombre} className="flex-1 basis-40">
+                  <button
+                    type="button"
+                    // Volver a un paso ya completado siempre se permite; avanzar solo con "Siguiente".
+                    disabled={n > paso}
+                    onClick={() => {
+                      setError(null);
+                      irAPaso(n);
+                    }}
+                    aria-current={actual ? 'step' : undefined}
+                    className={`flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left transition-colors ${
+                      actual
+                        ? 'border-primary bg-primary/10 font-medium'
+                        : hecho
+                          ? 'border-border hover:bg-muted'
+                          : 'border-border text-muted-foreground opacity-60'
+                    }`}
+                  >
+                    <span
+                      className={`flex size-6 shrink-0 items-center justify-center rounded-full text-xs ${
+                        hecho ? 'bg-success text-background' : actual ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                      }`}
+                    >
+                      {hecho ? <Check className="size-3.5" aria-hidden="true" /> : n}
+                    </span>
+                    {nombre}
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        </nav>
+      )}
+
+      <Seccion titulo="Datos generales" visible={mostrar(1)}>
         <Campo label="Nombre de la obra" span2>
           <input
             required
@@ -299,7 +396,7 @@ export function ObraForm({ catalogos, obraId, valoresIniciales }: ObraFormProps)
         </Campo>
       </Seccion>
 
-      <Seccion titulo="Ubicación">
+      <Seccion titulo="Ubicación" visible={mostrar(2)}>
         <Campo label="Estado">
           <select
             required
@@ -437,7 +534,7 @@ export function ObraForm({ catalogos, obraId, valoresIniciales }: ObraFormProps)
         </div>
       </Seccion>
 
-      <Seccion titulo="Finanzas">
+      <Seccion titulo="Finanzas" visible={mostrar(3)}>
         <Campo label="Presupuesto aprobado">
           <input
             type="number"
@@ -481,7 +578,7 @@ export function ObraForm({ catalogos, obraId, valoresIniciales }: ObraFormProps)
         </Campo>
       </Seccion>
 
-      <Seccion titulo="Fechas">
+      <Seccion titulo="Fechas" visible={mostrar(3)}>
         <Campo label="Aprobación">
           <input
             type="date"
@@ -516,7 +613,7 @@ export function ObraForm({ catalogos, obraId, valoresIniciales }: ObraFormProps)
         </Campo>
       </Seccion>
 
-      <Seccion titulo="Impacto">
+      <Seccion titulo="Impacto" visible={mostrar(4)}>
         <Campo label="Beneficiarios estimados (opcional)">
           <input
             type="number"
@@ -536,25 +633,85 @@ export function ObraForm({ catalogos, obraId, valoresIniciales }: ObraFormProps)
         </Campo>
       </Seccion>
 
-      {error && (
-        <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
+      {modoPasos && paso === PASOS.length && (
+        <section aria-label="Resumen de la obra" className="rounded-lg border border-border bg-muted/30 p-4 text-sm">
+          <h2 className="mb-2 font-semibold">Revisa antes de crear</h2>
+          <dl className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
+            <Resumen etiqueta="Obra" valor={`${valores.nombre} (${valores.codigo})`} />
+            <Resumen
+              etiqueta="Tipo / estatus"
+              valor={`${catalogos.tiposObra.find((t) => t.id === valores.tipoObraId)?.nombre ?? '—'} / ${catalogos.estatusObra.find((x) => x.id === valores.estatusId)?.nombre ?? '—'}`}
+            />
+            <Resumen
+              etiqueta="Ubicación"
+              valor={`${municipiosFiltrados.find((m) => m.id === valores.municipioId)?.nombre ?? '—'}, ${catalogos.estados.find((x) => x.id === valores.estadoId)?.nombre ?? '—'}`}
+            />
+            <Resumen
+              etiqueta="Trazado"
+              valor={
+                valores.tieneTrazado
+                  ? `${valores.trazadoTipo === 'AREA' ? 'Área' : 'Línea'} de ${valores.trazado.length} puntos`
+                  : 'Sin trazado'
+              }
+            />
+            <Resumen
+              etiqueta="Presupuesto aprobado"
+              valor={`${valores.presupuestoAprobado.toLocaleString('es-VE')} ${valores.moneda}`}
+            />
+          </dl>
+          <p className="mt-3 text-xs text-muted-foreground">
+            La obra se crea como borrador; se publica después desde el flujo de aprobación.
+          </p>
+        </section>
       )}
 
-      <div className="flex justify-end gap-3">
-        <button
-          type="button"
-          onClick={() => router.push('/admin/obras')}
-          className="rounded-md border border-border px-4 py-2 text-sm hover:bg-muted"
-        >
-          Cancelar
-        </button>
-        <button
-          type="submit"
-          disabled={enviando}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-        >
-          {enviando ? 'Guardando…' : esEdicion ? 'Guardar cambios' : 'Crear obra'}
-        </button>
+      {error && (
+        <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      )}
+
+      <div className="flex justify-between gap-3">
+        <div>
+          {modoPasos && paso > 1 && (
+            <button
+              type="button"
+              onClick={() => {
+                setError(null);
+                irAPaso(paso - 1);
+              }}
+              className="rounded-md border border-border px-4 py-2 text-sm hover:bg-muted"
+            >
+              Anterior
+            </button>
+          )}
+        </div>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => router.push('/admin/obras')}
+            className="rounded-md border border-border px-4 py-2 text-sm hover:bg-muted"
+          >
+            Cancelar
+          </button>
+          {modoPasos && paso < PASOS.length ? (
+            <button
+              type="button"
+              onClick={avanzar}
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              Siguiente
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={enviando}
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              {enviando ? 'Guardando…' : esEdicion ? 'Guardar cambios' : 'Crear obra'}
+            </button>
+          )}
+        </div>
       </div>
     </form>
   );
@@ -563,7 +720,17 @@ export function ObraForm({ catalogos, obraId, valoresIniciales }: ObraFormProps)
 const inputClass =
   'rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring/50 disabled:opacity-50';
 
-function Seccion({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+function Resumen({ etiqueta, valor }: { etiqueta: string; valor: string }) {
+  return (
+    <div className="flex gap-2">
+      <dt className="text-muted-foreground">{etiqueta}:</dt>
+      <dd className="font-medium">{valor}</dd>
+    </div>
+  );
+}
+
+function Seccion({ titulo, visible = true, children }: { titulo: string; visible?: boolean; children: React.ReactNode }) {
+  if (!visible) return null;
   return (
     <fieldset className="flex flex-col gap-4 rounded-lg border border-border p-4">
       <legend className="px-1 text-sm font-semibold">{titulo}</legend>
