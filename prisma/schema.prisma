@@ -53,6 +53,16 @@ enum EstadoModeracion {
   RECHAZADO
 }
 
+enum MotivoParalizacion {
+  FALTA_PRESUPUESTO
+  INCUMPLIMIENTO_CONTRATISTA
+  PROBLEMA_LEGAL_PERMISOS
+  PROBLEMA_TECNICO
+  CONDICIONES_CLIMATICAS
+  ORDEN_SUPERIOR
+  OTRO
+}
+
 // ========================================
 // TERRITORIO (con límites geográficos PostGIS)
 // ========================================
@@ -251,6 +261,7 @@ model Obra {
   multimedia             Multimedia[]
   personal               ObraPersonal[]
   reportesCiudadanos     ReporteCiudadano[]
+  paralizaciones         PeriodoParalizacion[]
   suscripciones          Suscripcion[]
 
   @@index([estatusId])
@@ -261,6 +272,26 @@ model Obra {
   @@index([destacada])
   @@index([createdAt(sort: Desc)])
   @@map("obras")
+}
+
+// Historial de paralizaciones de una obra (MODULOS_AVANZADOS.md, módulo 2): una
+// obra puede detenerse varias veces; cada periodo guarda el motivo y las
+// fechas exactas. `fechaReactivacion` es null mientras sigue paralizada.
+model PeriodoParalizacion {
+  id                  String             @id @default(uuid())
+  obraId              String
+  motivo              MotivoParalizacion
+  descripcion         String?
+  fechaInicio         DateTime
+  fechaReactivacion   DateTime?
+  responsableRegistro String? // id del usuario que la registró (suelto, como en la bitácora)
+  createdAt           DateTime           @default(now())
+
+  obra                Obra               @relation(fields: [obraId], references: [id], onDelete: Cascade)
+
+  @@index([obraId])
+  @@index([motivo])
+  @@map("periodos_paralizacion")
 }
 
 model Avance {

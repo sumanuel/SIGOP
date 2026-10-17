@@ -1,6 +1,7 @@
 import type { EstadoPublicacion } from '@prisma/client';
 import { prisma } from '@/lib/server/prisma';
 import { registrarAuditoria } from '@/lib/server/services/auditoria.service';
+import { validarCambioDeEstatus } from '@/lib/server/services/paralizaciones.service';
 import type {
   CrearObraInput,
   ActualizarObraInput,
@@ -139,6 +140,7 @@ const INCLUDE_DETALLE = {
   municipio: true,
   parroquia: true,
   avances: { orderBy: { fecha: 'desc' as const } },
+  paralizaciones: { orderBy: { fechaInicio: 'desc' as const } },
   hitos: { orderBy: { orden: 'asc' as const } },
   multimedia: { orderBy: { orden: 'asc' as const } },
   personal: {
@@ -267,6 +269,9 @@ interface CrearObraContext {
 
 /** Crea una obra en estado BORRADOR (el flujo de aprobación la publica luego). */
 export async function crearObra(data: CrearObraInput, ctx: CrearObraContext) {
+  // Una obra no puede nacer "Paralizada": el motivo se registra aparte.
+  await validarCambioDeEstatus(null, data.estatusId, null, ctx.usuarioId);
+
   const obra = await prisma.obra.create({
     data: {
       codigo: data.codigo,
@@ -328,6 +333,10 @@ export async function actualizarObra(id: string, data: ActualizarObraInput, ctx:
   if (!obraAntes) return null;
 
   const { lat, lng, trazado, trazadoTipo, ...campos } = data;
+
+  if (campos.estatusId) {
+    await validarCambioDeEstatus(id, campos.estatusId, obraAntes.estatusId, ctx.usuarioId);
+  }
 
   const obra = await prisma.obra.update({
     where: { id },

@@ -10,6 +10,7 @@ import { ObraLineaTiempo } from '@/components/obra/obra-linea-tiempo';
 import { ObraAvanceChart } from '@/components/obra/obra-avance-chart';
 import { ObraAcciones } from '@/components/obra/obra-acciones';
 import { ObraReportes } from '@/components/obra/obra-reportes';
+import { ObraParalizaciones } from '@/components/obra/obra-paralizaciones';
 import type { ObraMapa } from '@/lib/types/obra';
 import { calcularAtrasoDias } from '@/lib/atraso';
 
@@ -127,6 +128,8 @@ export default async function ObraFichaPage({ params }: PageProps) {
             historial={historial}
             atrasoDias={calcularAtrasoDias(obra)}
           />
+
+          <ObraParalizaciones periodos={obra.paralizaciones} />
 
           <ObraReportes reportes={obra.reportesCiudadanos} />
         </div>

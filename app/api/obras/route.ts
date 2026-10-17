@@ -3,6 +3,7 @@ import { ZodError } from 'zod';
 import { listarObrasParaMapa, crearObra } from '@/lib/server/services/obras.service';
 import { crearObraSchema, errorDeTrazado } from '@/lib/server/validators/obra.schema';
 import { requireAuth, AuthError } from '@/lib/server/require-auth';
+import { ParalizacionError } from '@/lib/server/services/paralizaciones.service';
 
 // GET /api/obras — lista pública de obras publicadas, para el mapa principal.
 export async function GET() {
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
     const obra = await crearObra(datos, { usuarioId: usuario.sub });
     return NextResponse.json({ obra }, { status: 201 });
   } catch (error) {
-    if (error instanceof AuthError) {
+    if (error instanceof AuthError || error instanceof ParalizacionError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
     if (error instanceof ZodError) {

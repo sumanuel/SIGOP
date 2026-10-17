@@ -59,6 +59,12 @@ export default async function EditarObraPage({ params }: PageProps) {
           >
             Personal
           </Link>
+          <Link
+            href={`/admin/obras/${obra.id}/paralizaciones`}
+            className="rounded-md border border-border px-3 py-2 text-sm hover:bg-muted"
+          >
+            Paralizaciones
+          </Link>
         </div>
       </div>
 
