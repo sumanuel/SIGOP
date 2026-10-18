@@ -8,6 +8,7 @@ import { SelectorTema } from '@/components/layout/selector-tema';
 const ENLACES = [
   { href: '/', label: 'Mapa' },
   { href: '/estadisticas', label: 'Estadísticas' },
+  { href: '/ranking', label: 'Ranking' },
   { href: '/obras-paralizadas', label: 'Paralizadas' },
   { href: '/admin/login', label: 'Acceso administrativo' },
 ];
