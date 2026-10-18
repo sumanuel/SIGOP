@@ -1,14 +1,18 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { SelectorTema } from '@/components/layout/selector-tema';
+
+export const EVENTO_ALERTAS = 'sigop-alertas-cambiaron';
 
 const ENLACES = [
   { href: '/admin', label: 'Panel' },
   { href: '/admin/obras', label: 'Obras' },
   { href: '/admin/personas', label: 'Personas' },
   { href: '/admin/reportes', label: 'Reportes' },
+  { href: '/admin/alertas', label: 'Alertas' },
   { href: '/admin/auditoria', label: 'Auditoría' },
   { href: '/admin/catalogos', label: 'Catálogos' },
   { href: '/admin/usuarios', label: 'Usuarios' },
@@ -18,6 +22,26 @@ const ENLACES = [
 export function AdminNav() {
   const pathname = usePathname();
   const router = useRouter();
+  const [alertasActivas, setAlertasActivas] = useState(0);
+
+  // Contador de alertas activas junto al enlace (se ignora si falla o no hay permiso).
+  useEffect(() => {
+    let cancelado = false;
+    const cargarContador = () =>
+      fetch('/api/admin/alertas')
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (!cancelado && data) setAlertasActivas(data.resumen.total);
+        })
+        .catch(() => {});
+    void cargarContador();
+    // La bandeja avisa cuando evalúa o resuelve, para que el contador no quede viejo.
+    window.addEventListener(EVENTO_ALERTAS, cargarContador);
+    return () => {
+      cancelado = true;
+      window.removeEventListener(EVENTO_ALERTAS, cargarContador);
+    };
+  }, []);
 
   async function cerrarSesion() {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -36,6 +60,11 @@ export function AdminNav() {
               className={activo ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'}
             >
               {enlace.label}
+              {enlace.href === '/admin/alertas' && alertasActivas > 0 && (
+                <span className="ml-1.5 rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-semibold text-white" aria-label={`${alertasActivas} alertas activas`}>
+                  {alertasActivas}
+                </span>
+              )}
             </Link>
           );
         })}

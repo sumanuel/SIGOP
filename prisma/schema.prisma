@@ -53,6 +53,14 @@ enum EstadoModeracion {
   RECHAZADO
 }
 
+enum TipoAlerta {
+  SIN_ACTUALIZACION // obra en ejecución sin un nuevo avance en muchos días
+  DESFASE_FINANCIERO // avance financiero muy por encima del físico
+  VENCIMIENTO_PROXIMO // se acerca la fecha de fin estimada con poco avance
+  OBRA_VENCIDA // pasó la fecha de fin estimada y no está culminada
+  PARALIZADA_PROLONGADA // paralizada por mucho tiempo
+}
+
 enum MotivoParalizacion {
   FALTA_PRESUPUESTO
   INCUMPLIMIENTO_CONTRATISTA
@@ -262,6 +270,7 @@ model Obra {
   personal               ObraPersonal[]
   reportesCiudadanos     ReporteCiudadano[]
   paralizaciones         PeriodoParalizacion[]
+  alertas                Alerta[]
   suscripciones          Suscripcion[]
 
   @@index([estatusId])
@@ -292,6 +301,27 @@ model PeriodoParalizacion {
   @@index([obraId])
   @@index([motivo])
   @@map("periodos_paralizacion")
+}
+
+// Alertas de gestión (MODULOS_AVANZADOS.md, módulo 3): las genera un motor de
+// reglas (alertas.service.ts), a lo sumo una sin resolver por obra y tipo.
+// Se resuelven solas cuando la condición desaparece, o a mano (`resueltaPor`).
+model Alerta {
+  id          String     @id @default(uuid())
+  obraId      String
+  tipo        TipoAlerta
+  severidad   Int        @default(1) // 1 = informativa, 2 = advertencia, 3 = crítica
+  mensaje     String
+  resuelta    Boolean    @default(false)
+  resueltaPor String? // id del usuario; null si se resolvió sola (la condición desapareció)
+  resueltaEn  DateTime?
+  createdAt   DateTime   @default(now())
+
+  obra        Obra       @relation(fields: [obraId], references: [id], onDelete: Cascade)
+
+  @@index([obraId])
+  @@index([tipo, resuelta])
+  @@map("alertas")
 }
 
 model Avance {

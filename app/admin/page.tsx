@@ -15,6 +15,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { AdminNav } from '@/components/admin/admin-nav';
+import { AvisoAlertas } from '@/components/admin/aviso-alertas';
 import { GraficoPorTipo } from '@/components/estadisticas/grafico-por-tipo';
 import { GraficoPublicacion } from '@/components/admin/grafico-publicacion';
 import { ROL_LEGIBLE } from '@/lib/rol-legible';
@@ -112,6 +113,8 @@ export default function AdminDashboard() {
       <p className="mt-1 text-sm text-muted-foreground">
         {usuario.nombre} · {ROL_LEGIBLE[usuario.rol] ?? usuario.rol}
       </p>
+
+      <AvisoAlertas />
 
       {dashboard && dashboard.pendientesAprobacion > 0 && (
         <Link
