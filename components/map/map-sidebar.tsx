@@ -29,6 +29,11 @@ interface MapSidebarProps {
   rangoPresupuesto: [number, number];
   limitesPresupuesto: [number, number];
   onCambiarRangoPresupuesto: (rango: [number, number]) => void;
+  monedaPresupuesto: string;
+  monedasDisponibles: string[];
+  onCambiarMonedaPresupuesto: (moneda: string) => void;
+  /** true si el rango está estrechado: en ese caso solo se ven obras de `monedaPresupuesto`. */
+  presupuestoActivo: boolean;
   /** En mobile el panel es un drawer a pantalla completa, oculto por
    * defecto (ver el botón flotante "Buscar y filtrar" en la página del
    * mapa) — en escritorio siempre está visible y estas props no aplican. */
@@ -68,6 +73,10 @@ export function MapSidebar({
   rangoPresupuesto,
   limitesPresupuesto,
   onCambiarRangoPresupuesto,
+  monedaPresupuesto,
+  monedasDisponibles,
+  onCambiarMonedaPresupuesto,
+  presupuestoActivo,
   abiertoEnMovil,
   onCerrarEnMovil,
 }: MapSidebarProps) {
@@ -197,18 +206,35 @@ export function MapSidebar({
         formatear={(v) => `${v}%`}
       />
 
+      {monedasDisponibles.length > 1 && (
+        <label className="flex flex-col gap-1 px-1 text-xs">
+          <span className="font-medium text-foreground/70">Moneda del presupuesto</span>
+          <select
+            value={monedaPresupuesto}
+            onChange={(e) => onCambiarMonedaPresupuesto(e.target.value)}
+            className="rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+          >
+            {monedasDisponibles.map((m) => (
+              <option key={m} value={m}>
+                {m === 'VES' ? 'Bolívares (VES)' : m === 'USD' ? 'Dólares (USD)' : m}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <RangoDoble
         titulo="Rango de presupuesto"
         minimoAbsoluto={limitesPresupuesto[0]}
         maximoAbsoluto={limitesPresupuesto[1]}
         valor={rangoPresupuesto}
         onCambiar={onCambiarRangoPresupuesto}
-        // Muestra siempre en VES: el filtro compara montos crudos sin
-        // convertir divisas, así que si hay obras en USD el número no
-        // representa su equivalente real — suficiente para un primer corte,
-        // pendiente de una conversión con tasa de cambio si hace falta.
-        formatear={(v) => formatearMoneda(v, 'VES')}
+        formatear={(v) => formatearMoneda(v, monedaPresupuesto)}
       />
+      {presupuestoActivo && monedasDisponibles.length > 1 && (
+        <p role="status" className="px-1 text-xs text-muted-foreground">
+          Con el rango ajustado solo se muestran las obras con presupuesto en {monedaPresupuesto}.
+        </p>
+      )}
     </aside>
   );
 }

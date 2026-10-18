@@ -12,10 +12,17 @@ import type { ObraMapa } from '@/lib/types/obra';
 
 type EstadoCarga = 'cargando' | 'ok' | 'error';
 
-function calcularLimitesPresupuesto(obras: ObraMapa[]): [number, number] {
-  if (obras.length === 0) return [0, 0];
-  const montos = obras.map((o) => o.presupuestoAprobado);
+// Los montos de monedas distintas no se pueden comparar (9.600.000 USD no son
+// 9.600.000 Bs.): el filtro de presupuesto trabaja siempre dentro de UNA moneda.
+function calcularLimitesPresupuesto(obras: ObraMapa[], moneda: string): [number, number] {
+  const montos = obras.filter((o) => o.moneda === moneda).map((o) => o.presupuestoAprobado);
+  if (montos.length === 0) return [0, 0];
   return [Math.min(...montos), Math.max(...montos)];
+}
+
+/** Monedas presentes en las obras: bolívares primero, el resto en orden alfabético. */
+function monedasDe(obras: ObraMapa[]): string[] {
+  return [...new Set(obras.map((o) => o.moneda))].sort((a, b) => (a === 'VES' ? -1 : b === 'VES' ? 1 : a.localeCompare(b)));
 }
 
 export default function MapaPage() {
@@ -35,6 +42,7 @@ export default function MapaPage() {
   const [rangoAvance, setRangoAvance] = useState<[number, number]>([0, 100]);
   const [rangoPresupuesto, setRangoPresupuesto] = useState<[number, number]>([0, 0]);
   const [limitesPresupuesto, setLimitesPresupuesto] = useState<[number, number]>([0, 0]);
+  const [monedaPresupuesto, setMonedaPresupuesto] = useState('VES');
 
   // Guarda las obras y, en el mismo paso, activa todos sus valores en cada
   // filtro (evita un segundo efecto encadenado solo para derivar esto).
@@ -46,7 +54,18 @@ export default function MapaPage() {
     setEstatusActivos(new Set(nuevas.map((o) => o.estatus.nombre)));
     setAniosActivos(new Set(nuevas.map(claveAnio)));
 
-    const limites = calcularLimitesPresupuesto(nuevas);
+    const monedas = monedasDe(nuevas);
+    const moneda = monedas[0] ?? 'VES';
+    const limites = calcularLimitesPresupuesto(nuevas, moneda);
+    setMonedaPresupuesto(moneda);
+    setLimitesPresupuesto(limites);
+    setRangoPresupuesto(limites);
+  }
+
+  // Al cambiar de moneda el rango se reinicia: los límites son otros.
+  function cambiarMonedaPresupuesto(moneda: string) {
+    const limites = calcularLimitesPresupuesto(obras, moneda);
+    setMonedaPresupuesto(moneda);
     setLimitesPresupuesto(limites);
     setRangoPresupuesto(limites);
   }
@@ -94,6 +113,11 @@ export default function MapaPage() {
 
   const busquedaNormalizada = normalizarTexto(busqueda);
 
+  // El filtro está "activo" cuando el rango se estrechó respecto a sus límites.
+  // Mientras no lo está, se ven todas las obras sin importar su moneda; cuando sí,
+  // solo las de la moneda elegida que caen dentro del rango.
+  const presupuestoActivo = rangoPresupuesto[0] > limitesPresupuesto[0] || rangoPresupuesto[1] < limitesPresupuesto[1];
+
   const obrasFiltradas = obras.filter((o) => {
     if (!tiposActivos.has(o.tipoObra.nombre)) return false;
     if (!estadosActivos.has(o.estado)) return false;
@@ -101,8 +125,9 @@ export default function MapaPage() {
     if (!estatusActivos.has(o.estatus.nombre)) return false;
     if (!aniosActivos.has(claveAnio(o))) return false;
     if (o.avanceFisico < rangoAvance[0] || o.avanceFisico > rangoAvance[1]) return false;
-    if (o.presupuestoAprobado < rangoPresupuesto[0] || o.presupuestoAprobado > rangoPresupuesto[1]) {
-      return false;
+    if (presupuestoActivo) {
+      if (o.moneda !== monedaPresupuesto) return false;
+      if (o.presupuestoAprobado < rangoPresupuesto[0] || o.presupuestoAprobado > rangoPresupuesto[1]) return false;
     }
     if (busquedaNormalizada) {
       const coincide =
@@ -140,6 +165,10 @@ export default function MapaPage() {
         rangoPresupuesto={rangoPresupuesto}
         limitesPresupuesto={limitesPresupuesto}
         onCambiarRangoPresupuesto={setRangoPresupuesto}
+        monedaPresupuesto={monedaPresupuesto}
+        monedasDisponibles={monedasDe(obras)}
+        onCambiarMonedaPresupuesto={cambiarMonedaPresupuesto}
+        presupuestoActivo={presupuestoActivo}
         abiertoEnMovil={filtrosAbiertosEnMovil}
         onCerrarEnMovil={() => setFiltrosAbiertosEnMovil(false)}
       />

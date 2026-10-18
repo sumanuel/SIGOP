@@ -19,6 +19,8 @@ export interface ObraMapa {
   };
   avanceFisico: number;
   presupuestoAprobado: number;
+  /** Moneda del presupuesto (VES, USD…): los montos de monedas distintas no se comparan entre sí. */
+  moneda: string;
   anioAprobacion: number | null;
   estado: string;
   municipio: string;
