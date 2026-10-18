@@ -15,6 +15,9 @@ export function SiteFooter() {
         <Link href="/contacto" className="hover:text-primary">
           Contacto
         </Link>
+        <Link href="/contratistas" className="hover:text-primary">
+          Contratistas
+        </Link>
         <Link href="/denuncias" className="hover:text-primary">
           Denuncias
         </Link>

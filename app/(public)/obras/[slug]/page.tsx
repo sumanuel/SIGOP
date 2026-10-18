@@ -12,6 +12,7 @@ import { ObraAcciones } from '@/components/obra/obra-acciones';
 import { ObraReportes } from '@/components/obra/obra-reportes';
 import { ObraParalizaciones } from '@/components/obra/obra-paralizaciones';
 import { ObraIntegridad } from '@/components/obra/obra-integridad';
+import { ObraContratacion } from '@/components/obra/obra-contratacion';
 import type { ObraMapa } from '@/lib/types/obra';
 import { calcularAtrasoDias } from '@/lib/atraso';
 
@@ -121,6 +122,11 @@ export default async function ObraFichaPage({ params }: PageProps) {
             fechaFinEstimada={obra.fechaFinEstimada}
             fechaFinReal={obra.fechaFinReal}
             hitos={obra.hitos}
+          />
+
+          <ObraContratacion
+            contrato={obra.contrato}
+            contratista={obra.contratista ? { id: obra.contratista.id, razonSocial: obra.contratista.razonSocial } : null}
           />
 
           <ObraAvanceChart

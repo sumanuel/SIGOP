@@ -141,6 +141,7 @@ const INCLUDE_DETALLE = {
   parroquia: true,
   avances: { orderBy: { fecha: 'desc' as const } },
   paralizaciones: { orderBy: { fechaInicio: 'desc' as const } },
+  contrato: { include: { adendas: { orderBy: { numero: 'asc' as const } } } },
   hitos: { orderBy: { orden: 'asc' as const } },
   multimedia: { orderBy: { orden: 'asc' as const } },
   personal: {

@@ -53,6 +53,13 @@ enum EstadoModeracion {
   RECHAZADO
 }
 
+enum ModalidadContratacion {
+  LICITACION_GENERAL
+  LICITACION_SELECTIVA
+  CONTRATACION_DIRECTA
+  CONSULTA_PRECIOS
+}
+
 enum EstadoDenuncia {
   RECIBIDA
   EN_REVISION
@@ -184,6 +191,7 @@ model Contratista {
   updatedAt   DateTime @updatedAt
 
   obras       Obra[]
+  contratos   Contrato[]
 
   @@map("contratistas")
 }
@@ -279,6 +287,7 @@ model Obra {
   paralizaciones         PeriodoParalizacion[]
   alertas                Alerta[]
   denuncias              Denuncia[]
+  contrato               Contrato?
   suscripciones          Suscripcion[]
 
   @@index([estatusId])
@@ -394,6 +403,51 @@ model EventoDenuncia {
 
   @@index([denunciaId])
   @@map("eventos_denuncia")
+}
+
+// Contratación de una obra (MODULOS_AVANZADOS.md, módulo 1): cómo se contrató,
+// cuánto costó el contrato original y qué modificaciones tuvo. El contrato
+// original no se sobrescribe: los cambios de monto y plazo son adendas.
+model Contrato {
+  id                 String                @id @default(uuid())
+  obraId             String                @unique // 1 obra ↔ 1 contrato principal
+  contratistaId      String
+  numeroContrato     String                @unique
+  modalidad          ModalidadContratacion
+  moneda             String                @default("VES")
+  montoOriginal      Decimal               @db.Decimal(18, 2)
+  montoActual        Decimal               @db.Decimal(18, 2) // cambia solo con adendas
+  fechaFirma         DateTime
+  plazoEjecucionDias Int
+  documentoUrl       String?
+  creadoPor          String?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  obra               Obra                  @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  contratista        Contratista           @relation(fields: [contratistaId], references: [id], onDelete: Restrict)
+  adendas            ContratoAdenda[]
+
+  @@index([contratistaId])
+  @@map("contratos")
+}
+
+model ContratoAdenda {
+  id              String   @id @default(uuid())
+  contratoId      String
+  numero          Int // Adenda N.º 1, 2…
+  motivo          String
+  montoAnterior   Decimal  @db.Decimal(18, 2)
+  montoNuevo      Decimal  @db.Decimal(18, 2)
+  diasAdicionales Int      @default(0)
+  documentoUrl    String?
+  registradoPor   String?
+  fecha           DateTime @default(now())
+
+  contrato        Contrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+
+  @@unique([contratoId, numero])
+  @@map("contrato_adendas")
 }
 
 model Avance {
