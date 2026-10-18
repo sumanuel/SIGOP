@@ -73,6 +73,14 @@ export function errorDeTrazado(datos: { trazado?: unknown[] | null; trazadoTipo?
 // puede "saltarse" el flujo Borrador → En revisión → Publicado escribiendo
 // el campo directamente en este PUT.
 export const actualizarObraSchema = crearObraSchema.partial().extend({
+  // `.partial()` conserva los `.default()` del schema de creación (Zod 4): una
+  // actualización parcial reiniciaba el presupuesto, el monto ejecutado, la
+  // moneda y "destacada" a sus valores por defecto. Aquí se redeclaran sin
+  // default: lo que no viene en la petición no se toca.
+  presupuestoAprobado: z.number().nonnegative().optional(),
+  montoEjecutado: z.number().nonnegative().optional(),
+  moneda: z.string().max(10).optional(),
+  destacada: z.boolean().optional(),
   // `null` explícito permite "quitar" el trazado (la obra dejó de ser lineal).
   trazado: z
     .array(z.tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)]))
