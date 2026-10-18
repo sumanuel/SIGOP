@@ -37,6 +37,7 @@ export default async function GaleriaDeObraPage({ params }: PageProps) {
           multimediaInicial={multimedia.map((m) => ({
             id: m.id,
             url: m.url,
+            tipo: m.tipo,
             miniaturaUrl: m.miniaturaUrl,
             titulo: m.titulo,
             etapa: m.etapa,

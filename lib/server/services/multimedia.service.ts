@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/server/prisma';
 import { registrarAuditoria } from '@/lib/server/services/auditoria.service';
-import { guardarImagen, eliminarImagen, UploadError } from '@/lib/server/uploads';
+import { guardarImagen, guardarVideo, eliminarImagen, UploadError } from '@/lib/server/uploads';
 import type { TipoMultimedia, EtapaMultimedia } from '@prisma/client';
 
 export async function listarMultimediaDeObra(obraId: string) {
@@ -79,6 +79,52 @@ export async function agregarFoto(obraId: string, data: AgregarFotoInput, usuari
   return multimedia;
 }
 
+interface AgregarVideoInput {
+  file: File;
+  /** Fotograma de portada generado por el navegador. */
+  poster?: File | null;
+  titulo?: string;
+  etapa?: EtapaMultimedia;
+  avanceId?: string;
+}
+
+/**
+ * Sube un video (MP4 o WebM) a la galería de la obra. Un video nunca es la
+ * foto de portada de la obra (esa se usa en el mapa y en miniaturas) y no tiene
+ * evidencia EXIF.
+ */
+export async function agregarVideo(obraId: string, data: AgregarVideoInput, usuarioId: string) {
+  const obra = await prisma.obra.findUnique({ where: { id: obraId }, select: { id: true } });
+  if (!obra) return null;
+
+  if (data.avanceId) {
+    const avance = await prisma.avance.findUnique({ where: { id: data.avanceId }, select: { obraId: true } });
+    if (!avance || avance.obraId !== obraId) {
+      throw new UploadError(400, 'El avance indicado no pertenece a esta obra.');
+    }
+  }
+
+  const { url, miniaturaUrl } = await guardarVideo(data.file, `obras/${obraId}`, data.poster);
+  const ultimaOrden = await prisma.multimedia.count({ where: { obraId } });
+
+  const multimedia = await prisma.multimedia.create({
+    data: {
+      obraId,
+      avanceId: data.avanceId,
+      tipo: 'VIDEO' as TipoMultimedia,
+      url,
+      miniaturaUrl,
+      titulo: data.titulo,
+      etapa: data.etapa,
+      esPortada: false,
+      orden: ultimaOrden,
+    },
+  });
+
+  await registrarAuditoria({ usuarioId, accion: 'CREATE', entidad: 'Multimedia', entidadId: multimedia.id, datosDespues: multimedia });
+  return multimedia;
+}
+
 export async function eliminarFoto(id: string, usuarioId: string) {
   const multimedia = await prisma.multimedia.findUnique({ where: { id } });
   if (!multimedia) return null;
@@ -101,6 +147,7 @@ export async function eliminarFoto(id: string, usuarioId: string) {
 export async function marcarComoPortada(id: string, usuarioId: string) {
   const multimedia = await prisma.multimedia.findUnique({ where: { id } });
   if (!multimedia) return null;
+  if (multimedia.tipo !== 'IMAGEN') throw new UploadError(400, 'Solo una imagen puede ser la portada de la obra.');
 
   await prisma.multimedia.updateMany({
     where: { obraId: multimedia.obraId, esPortada: true },

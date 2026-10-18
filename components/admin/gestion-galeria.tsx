@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent } from 'react';
 import Image from 'next/image';
-import { AlertCircle, CheckCircle2, ImagePlus, Loader2, MapPin, Star, Trash2, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ImagePlus, Loader2, MapPin, Play, Star, Trash2, X } from 'lucide-react';
 
 interface FotoMultimedia {
   id: string;
   url: string;
+  tipo: 'IMAGEN' | 'VIDEO' | 'DOCUMENTO';
   miniaturaUrl: string | null;
   titulo: string | null;
   etapa: 'ANTES' | 'DURANTE' | 'DESPUES' | null;
@@ -41,8 +42,49 @@ interface ItemCola {
 
 // Mismos límites que valida el servidor (lib/server/uploads.ts); se revisan
 // aquí primero para avisar antes de gastar una subida.
-const TIPOS_PERMITIDOS = ['image/jpeg', 'image/png', 'image/webp'];
-const TAMANO_MAXIMO_BYTES = 8 * 1024 * 1024;
+const TIPOS_IMAGEN = ['image/jpeg', 'image/png', 'image/webp'];
+const TIPOS_VIDEO = ['video/mp4', 'video/webm'];
+const TIPOS_PERMITIDOS = [...TIPOS_IMAGEN, ...TIPOS_VIDEO];
+const TAMANO_MAXIMO_IMAGEN = 8 * 1024 * 1024;
+const TAMANO_MAXIMO_VIDEO = 50 * 1024 * 1024;
+
+const esVideo = (archivo: File) => TIPOS_VIDEO.includes(archivo.type);
+
+/**
+ * Saca un fotograma del video en el navegador para usarlo de póster (el
+ * servidor no tiene ffmpeg). Devuelve null si el navegador no puede decodificar
+ * el video o tarda demasiado: el video se sube igual, solo sin póster.
+ */
+function capturarFotograma(archivo: File): Promise<Blob | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(archivo);
+    const video = document.createElement('video');
+    const terminar = (resultado: Blob | null) => {
+      clearTimeout(temporizador);
+      URL.revokeObjectURL(url);
+      resolve(resultado);
+    };
+    const temporizador = setTimeout(() => terminar(null), 8000);
+
+    video.muted = true;
+    video.preload = 'metadata';
+    video.playsInline = true;
+    video.onerror = () => terminar(null);
+    video.onloadedmetadata = () => {
+      video.currentTime = Math.min(1, (video.duration || 2) / 2);
+    };
+    video.onseeked = () => {
+      const ancho = Math.min(640, video.videoWidth || 640);
+      const alto = Math.round(ancho * ((video.videoHeight || 360) / (video.videoWidth || 640)));
+      const lienzo = document.createElement('canvas');
+      lienzo.width = ancho;
+      lienzo.height = alto;
+      lienzo.getContext('2d')?.drawImage(video, 0, 0, ancho, alto);
+      lienzo.toBlob((blob) => terminar(blob), 'image/jpeg', 0.8);
+    };
+    video.src = url;
+  });
+}
 const MAX_ARCHIVOS_POR_LOTE = 20;
 
 const inputClass =
@@ -70,6 +112,8 @@ export function GestionGaleria({ obraId, multimediaInicial, avancesDisponibles }
 
   const pendientes = cola.filter((item) => item.estado === 'pendiente' || item.estado === 'error');
   const variasFotos = cola.length > 1;
+  // Un video nunca es la portada de la obra.
+  const soloVideo = cola.length === 1 && esVideo(cola[0].archivo);
 
   function agregarArchivos(lista: FileList | File[]) {
     setAviso(null);
@@ -78,11 +122,11 @@ export function GestionGaleria({ obraId, multimediaInicial, avancesDisponibles }
 
     for (const archivo of Array.from(lista)) {
       if (!TIPOS_PERMITIDOS.includes(archivo.type)) {
-        rechazados.push(`${archivo.name}: solo JPG, PNG o WebP`);
-      } else if (archivo.size > TAMANO_MAXIMO_BYTES) {
-        rechazados.push(`${archivo.name}: supera 8 MB`);
+        rechazados.push(`${archivo.name}: solo JPG, PNG, WebP, MP4 o WebM`);
+      } else if (archivo.size > (esVideo(archivo) ? TAMANO_MAXIMO_VIDEO : TAMANO_MAXIMO_IMAGEN)) {
+        rechazados.push(`${archivo.name}: supera ${esVideo(archivo) ? 50 : 8} MB`);
       } else if (cola.length + nuevos.length >= MAX_ARCHIVOS_POR_LOTE) {
-        rechazados.push(`${archivo.name}: máximo ${MAX_ARCHIVOS_POR_LOTE} fotos por lote`);
+        rechazados.push(`${archivo.name}: máximo ${MAX_ARCHIVOS_POR_LOTE} archivos por lote`);
       } else {
         nuevos.push({
           id: crypto.randomUUID(),
@@ -125,6 +169,10 @@ export function GestionGaleria({ obraId, multimediaInicial, avancesDisponibles }
     try {
       const formData = new FormData();
       formData.append('archivo', item.archivo);
+      if (esVideo(item.archivo)) {
+        const poster = await capturarFotograma(item.archivo);
+        if (poster) formData.append('miniatura', poster, 'poster.jpg');
+      }
       if (titulo) formData.append('titulo', titulo);
       if (etapa) formData.append('etapa', etapa);
       if (avanceId) formData.append('avanceId', avanceId);
@@ -137,7 +185,7 @@ export function GestionGaleria({ obraId, multimediaInicial, avancesDisponibles }
 
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        actualizarItem(item.id, { estado: 'error', mensaje: data?.error ?? 'No se pudo subir la foto.' });
+        actualizarItem(item.id, { estado: 'error', mensaje: data?.error ?? 'No se pudo subir el archivo.' });
         return;
       }
 
@@ -205,7 +253,7 @@ export function GestionGaleria({ obraId, multimediaInicial, avancesDisponibles }
       <form onSubmit={onSubmit} className="flex flex-col gap-4 rounded-lg border border-border p-4">
         <h2 className="flex items-center gap-2 text-sm font-semibold">
           <ImagePlus className="size-4" />
-          Subir fotos
+          Subir fotos y videos
         </h2>
 
         <label
@@ -220,9 +268,9 @@ export function GestionGaleria({ obraId, multimediaInicial, avancesDisponibles }
           }`}
         >
           <ImagePlus className="size-6 text-muted-foreground" aria-hidden="true" />
-          <span className="font-medium">Arrastra tus fotos aquí o haz clic para elegirlas</span>
+          <span className="font-medium">Arrastra tus fotos o videos aquí, o haz clic para elegirlos</span>
           <span className="text-xs text-muted-foreground">
-            JPG, PNG o WebP · hasta 8 MB cada una · máximo {MAX_ARCHIVOS_POR_LOTE} por lote
+            Fotos JPG, PNG o WebP (hasta 8 MB) · videos MP4 o WebM (hasta 50 MB) · máximo {MAX_ARCHIVOS_POR_LOTE} por lote
           </span>
           <input
             type="file"
@@ -230,7 +278,7 @@ export function GestionGaleria({ obraId, multimediaInicial, avancesDisponibles }
             multiple
             onChange={alElegir}
             className="sr-only"
-            aria-label="Elegir fotos de la obra"
+            aria-label="Elegir fotos o videos de la obra"
           />
         </label>
 
@@ -239,8 +287,18 @@ export function GestionGaleria({ obraId, multimediaInicial, avancesDisponibles }
             {cola.map((item) => (
               <li key={item.id} className="flex flex-col gap-1.5 rounded-lg border border-border p-2">
                 <div className="relative aspect-video overflow-hidden rounded-md bg-muted">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={item.vista} alt="" className="size-full object-cover" />
+                  {esVideo(item.archivo) ? (
+                    <>
+                      {/* El navegador muestra el primer fotograma como vista previa. */}
+                      <video src={item.vista} muted playsInline preload="metadata" className="size-full object-cover" />
+                      <span className="absolute bottom-1 left-1 inline-flex items-center gap-1 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
+                        <Play className="size-2.5" aria-hidden="true" /> Video
+                      </span>
+                    </>
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={item.vista} alt="" className="size-full object-cover" />
+                  )}
                   {item.estado !== 'subiendo' && item.estado !== 'listo' && (
                     <button
                       type="button"
@@ -277,6 +335,13 @@ export function GestionGaleria({ obraId, multimediaInicial, avancesDisponibles }
               </li>
             ))}
           </ul>
+        )}
+
+        {cola.some((i) => esVideo(i.archivo)) && (
+          <p className="rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+            Los videos se publican tal cual, sin recomprimir: conservan sus datos internos, que pueden incluir la
+            ubicación GPS de la grabación. Para que carguen rápido en el celular, graba en 720p y de menos de 2 minutos.
+          </p>
         )}
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -316,8 +381,8 @@ export function GestionGaleria({ obraId, multimediaInicial, avancesDisponibles }
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
-            checked={esPortada && !variasFotos}
-            disabled={variasFotos}
+            checked={esPortada && !variasFotos && !soloVideo}
+            disabled={variasFotos || soloVideo}
             onChange={(e) => setEsPortada(e.target.checked)}
             className="size-4 rounded border-input disabled:opacity-50"
           />
@@ -358,13 +423,24 @@ export function GestionGaleria({ obraId, multimediaInicial, avancesDisponibles }
             {fotos.map((foto) => (
               <div key={foto.id} className="flex flex-col gap-2 rounded-lg border border-border p-2">
                 <div className="relative aspect-video overflow-hidden rounded-md bg-muted">
-                  <Image
-                    src={foto.miniaturaUrl ?? foto.url}
-                    alt={foto.titulo ?? 'Foto de la obra'}
-                    fill
-                    className="object-cover"
-                    unoptimized
-                  />
+                  {foto.tipo === 'VIDEO' ? (
+                    <>
+                      {foto.miniaturaUrl && <Image src={foto.miniaturaUrl} alt="" fill className="object-cover" unoptimized />}
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/25">
+                        <span className="flex size-9 items-center justify-center rounded-full bg-black/60 text-white">
+                          <Play className="size-4 translate-x-0.5" aria-hidden="true" />
+                        </span>
+                      </span>
+                    </>
+                  ) : (
+                    <Image
+                      src={foto.miniaturaUrl ?? foto.url}
+                      alt={foto.titulo ?? 'Foto de la obra'}
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
+                  )}
                   {foto.esPortada && (
                     <span className="absolute left-1 top-1 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground">
                       Portada
@@ -381,14 +457,18 @@ export function GestionGaleria({ obraId, multimediaInicial, avancesDisponibles }
                   </p>
                 )}
                 <div className="flex justify-between text-xs">
-                  <button
-                    type="button"
-                    onClick={() => marcarPortada(foto)}
-                    disabled={foto.esPortada}
-                    className="inline-flex items-center gap-1 text-primary hover:underline disabled:text-muted-foreground disabled:no-underline"
-                  >
-                    <Star className="size-3" /> Portada
-                  </button>
+                  {foto.tipo === 'IMAGEN' ? (
+                    <button
+                      type="button"
+                      onClick={() => marcarPortada(foto)}
+                      disabled={foto.esPortada}
+                      className="inline-flex items-center gap-1 text-primary hover:underline disabled:text-muted-foreground disabled:no-underline"
+                    >
+                      <Star className="size-3" /> Portada
+                    </button>
+                  ) : (
+                    <span className="text-muted-foreground">Video</span>
+                  )}
                   <button
                     type="button"
                     onClick={() => eliminar(foto)}

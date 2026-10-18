@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { eliminarFoto, marcarComoPortada } from '@/lib/server/services/multimedia.service';
 import { requireAuth, AuthError } from '@/lib/server/require-auth';
+import { UploadError } from '@/lib/server/uploads';
 
 const ROLES_GESTION = ['SUPER_ADMIN', 'ADMIN_ENTE', 'EDITOR_OBRA'];
 
@@ -24,7 +25,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ multimedia });
   } catch (error) {
-    if (error instanceof AuthError) {
+    if (error instanceof AuthError || error instanceof UploadError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
     console.error('Error actualizando la foto:', error);

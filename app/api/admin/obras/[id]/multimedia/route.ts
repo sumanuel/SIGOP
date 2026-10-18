@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import {
   listarMultimediaDeObra,
   agregarFoto,
+  agregarVideo,
 } from '@/lib/server/services/multimedia.service';
 import { UploadError } from '@/lib/server/uploads';
 import { requireAuth, AuthError } from '@/lib/server/require-auth';
@@ -54,7 +55,20 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const avanceIdForm = form.get('avanceId');
 
-    const multimedia = await agregarFoto(
+    const poster = form.get('miniatura');
+    const multimedia = archivo.type.startsWith('video/')
+      ? await agregarVideo(
+          id,
+          {
+            file: archivo,
+            poster: poster instanceof File ? poster : null,
+            titulo: typeof form.get('titulo') === 'string' ? String(form.get('titulo')) : undefined,
+            etapa,
+            avanceId: typeof avanceIdForm === 'string' && avanceIdForm ? avanceIdForm : undefined,
+          },
+          usuario.sub
+        )
+      : await agregarFoto(
       id,
       {
         file: archivo,

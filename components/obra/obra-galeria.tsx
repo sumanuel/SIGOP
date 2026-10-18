@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
-import { ChevronLeft, ChevronRight, ImageOff, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ImageOff, Play, X } from 'lucide-react';
 
 interface MultimediaItem {
   id: string;
   url: string;
+  miniaturaUrl?: string | null;
+  tipo: 'IMAGEN' | 'VIDEO' | 'DOCUMENTO';
   titulo: string | null;
   etapa: 'ANTES' | 'DURANTE' | 'DESPUES' | null;
   esPortada: boolean;
@@ -26,12 +28,16 @@ export function ObraGaleria({ multimedia }: ObraGaleriaProps) {
   const abridorRef = useRef<HTMLElement | null>(null);
 
   const ordenadas = useMemo(
-    () => [...multimedia].sort((a, b) => (b.esPortada ? 1 : 0) - (a.esPortada ? 1 : 0)),
+    () =>
+      multimedia
+        .filter((m) => m.tipo === 'IMAGEN' || m.tipo === 'VIDEO')
+        .sort((a, b) => (b.esPortada ? 1 : 0) - (a.esPortada ? 1 : 0)),
     [multimedia]
   );
 
-  const antes = multimedia.find((m) => m.etapa === 'ANTES');
-  const despues = multimedia.find((m) => m.etapa === 'DESPUES');
+  // El comparador antes/después es solo de imágenes.
+  const antes = multimedia.find((m) => m.tipo === 'IMAGEN' && m.etapa === 'ANTES');
+  const despues = multimedia.find((m) => m.tipo === 'IMAGEN' && m.etapa === 'DESPUES');
 
   const visorAbierto = visorIndex !== null;
   const total = ordenadas.length;
@@ -41,7 +47,10 @@ export function ObraGaleria({ multimedia }: ObraGaleriaProps) {
   useEffect(() => {
     if (!visorAbierto) return;
     const onKey = (e: KeyboardEvent) => {
+      // Con el foco en un video, las flechas son del reproductor (adelantar/atrasar).
+      const enVideo = (e.target as HTMLElement | null)?.tagName === 'VIDEO';
       if (e.key === 'Escape') setVisorIndex(null);
+      else if (enVideo && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) return;
       else if (e.key === 'ArrowRight') setVisorIndex((i) => (i === null ? i : (i + 1) % total));
       else if (e.key === 'ArrowLeft') setVisorIndex((i) => (i === null ? i : (i - 1 + total) % total));
       else if (e.key === 'Tab') {
@@ -85,17 +94,34 @@ export function ObraGaleria({ multimedia }: ObraGaleriaProps) {
               abridorRef.current = e.currentTarget;
               setVisorIndex(i);
             }}
-            aria-label={`Ampliar: ${item.titulo ?? 'foto de la obra'}`}
+            aria-label={
+              item.tipo === 'VIDEO'
+                ? `Reproducir video: ${item.titulo ?? 'video de la obra'}`
+                : `Ampliar: ${item.titulo ?? 'foto de la obra'}`
+            }
             className="relative aspect-video overflow-hidden rounded-lg border border-border bg-muted transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
-            <Image
-              src={item.url}
-              alt={item.titulo ?? 'Foto de la obra'}
-              fill
-              sizes="(min-width: 640px) 25vw, 50vw"
-              className="object-cover"
-              unoptimized
-            />
+            {item.tipo === 'VIDEO' ? (
+              <>
+                {item.miniaturaUrl && (
+                  <Image src={item.miniaturaUrl} alt="" fill sizes="(min-width: 640px) 25vw, 50vw" className="object-cover" unoptimized />
+                )}
+                <span className="absolute inset-0 flex items-center justify-center bg-black/25">
+                  <span className="flex size-12 items-center justify-center rounded-full bg-black/60 text-white">
+                    <Play className="size-5 translate-x-0.5" aria-hidden="true" />
+                  </span>
+                </span>
+              </>
+            ) : (
+              <Image
+                src={item.url}
+                alt={item.titulo ?? 'Foto de la obra'}
+                fill
+                sizes="(min-width: 640px) 25vw, 50vw"
+                className="object-cover"
+                unoptimized
+              />
+            )}
           </button>
         ))}
       </div>
@@ -149,13 +175,30 @@ export function ObraGaleria({ multimedia }: ObraGaleriaProps) {
             <X className="size-5" />
           </button>
           <div className="relative h-[80vh] w-full max-w-4xl" onClick={(e) => e.stopPropagation()}>
-            <Image
-              src={ordenadas[visorIndex].url}
-              alt={ordenadas[visorIndex].titulo ?? 'Foto de la obra'}
-              fill
-              className="object-contain"
-              unoptimized
-            />
+            {ordenadas[visorIndex].tipo === 'VIDEO' ? (
+              // `key` fuerza un reproductor nuevo al pasar a otro elemento: así el
+              // video anterior deja de sonar. Sin autoplay (accesibilidad y datos móviles).
+              <video
+                key={ordenadas[visorIndex].id}
+                src={ordenadas[visorIndex].url}
+                poster={ordenadas[visorIndex].miniaturaUrl ?? undefined}
+                controls
+                playsInline
+                preload="metadata"
+                aria-label={ordenadas[visorIndex].titulo ?? 'Video de la obra'}
+                className="size-full object-contain"
+              >
+                Tu navegador no puede reproducir este video.
+              </video>
+            ) : (
+              <Image
+                src={ordenadas[visorIndex].url}
+                alt={ordenadas[visorIndex].titulo ?? 'Foto de la obra'}
+                fill
+                className="object-contain"
+                unoptimized
+              />
+            )}
           </div>
           {total > 1 && (
             <>
