@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/server/prisma';
 import { registrarAuditoria } from '@/lib/server/services/auditoria.service';
 import type { CrearAvanceInput } from '@/lib/server/validators/avance.schema';
+import { registrarIntegridad } from '@/lib/server/services/integridad.service';
+import { datosSelladosDeAvance } from '@/lib/server/integridad/hash';
 
 export async function listarAvancesDeObra(obraId: string) {
   return prisma.avance.findMany({
@@ -24,8 +26,10 @@ export async function crearAvance(
   const obra = await prisma.obra.findUnique({ where: { id: obraId } });
   if (!obra) return null;
 
-  const [avance] = await prisma.$transaction([
-    prisma.avance.create({
+  // El avance, la cifra actual de la obra y su sello de integridad se guardan
+  // juntos: si algo falla, no queda un avance sin sellar.
+  const avance = await prisma.$transaction(async (tx) => {
+    const creado = await tx.avance.create({
       data: {
         obraId,
         avanceFisico: data.avanceFisico,
@@ -34,16 +38,24 @@ export async function crearAvance(
         fecha: data.fecha ? new Date(data.fecha) : undefined,
         registradoPor: ctx.email,
       },
-    }),
-    prisma.obra.update({
+    });
+    await tx.obra.update({
       where: { id: obraId },
       data: {
         avanceFisico: data.avanceFisico,
         avanceFinanciero: data.avanceFinanciero,
         actualizadoPor: ctx.email,
       },
-    }),
-  ]);
+    });
+    await registrarIntegridad(tx, {
+      entidad: 'Avance',
+      entidadId: creado.id,
+      obraId,
+      accion: 'CREAR',
+      datos: datosSelladosDeAvance(creado),
+    });
+    return creado;
+  });
 
   await registrarAuditoria({
     usuarioId: ctx.usuarioId,

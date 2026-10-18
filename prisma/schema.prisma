@@ -324,6 +324,28 @@ model Alerta {
   @@map("alertas")
 }
 
+// Cadena de sellos de integridad (MODULOS_AVANZADOS.md, módulo 6): cada vez que
+// se registra un avance se agrega un registro cuyo hash incluye el contenido y
+// el hash del registro anterior (como un libro contable encadenado). Si alguien
+// edita un dato o un registro viejo directamente en la base, la verificación lo
+// detecta. `datos` guarda el contenido sellado para poder recalcular cada hash.
+model RegistroIntegridad {
+  id           String   @id @default(uuid())
+  secuencia    Int      @unique @default(autoincrement()) // orden estricto de la cadena
+  entidad      String // "Avance"
+  entidadId    String
+  obraId       String // para verificar por obra sin recorrer la cadena completa
+  accion       String // CREAR
+  datos        Json
+  datosHash    String // SHA-256 de (contenido canónico + hashAnterior)
+  hashAnterior String
+  createdAt    DateTime @default(now())
+
+  @@index([entidad, entidadId])
+  @@index([obraId])
+  @@map("registro_integridad")
+}
+
 model Avance {
   id               String    @id @default(uuid())
   obraId           String
