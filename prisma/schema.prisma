@@ -53,6 +53,13 @@ enum EstadoModeracion {
   RECHAZADO
 }
 
+enum EstadoDenuncia {
+  RECIBIDA
+  EN_REVISION
+  DERIVADA_CONTRALORIA
+  CERRADA
+}
+
 enum TipoAlerta {
   SIN_ACTUALIZACION // obra en ejecución sin un nuevo avance en muchos días
   DESFASE_FINANCIERO // avance financiero muy por encima del físico
@@ -271,6 +278,7 @@ model Obra {
   reportesCiudadanos     ReporteCiudadano[]
   paralizaciones         PeriodoParalizacion[]
   alertas                Alerta[]
+  denuncias              Denuncia[]
   suscripciones          Suscripcion[]
 
   @@index([estatusId])
@@ -344,6 +352,48 @@ model RegistroIntegridad {
   @@index([entidad, entidadId])
   @@index([obraId])
   @@map("registro_integridad")
+}
+
+// Canal de denuncia ciudadana (MODULOS_AVANZADOS.md, módulo 4). Diseñado para
+// proteger a quien denuncia: no se guarda IP ni agente de navegador, el código de
+// seguimiento solo existe en claro una vez (aquí queda su hash), y el contacto,
+// opcional, se cifra en reposo.
+model Denuncia {
+  id              String         @id @default(uuid())
+  numero          Int            @unique @default(autoincrement()) // referencia interna; nunca se muestra al público
+  obraId          String?
+  codigoHash      String         @unique // SHA-256 del código de seguimiento
+  esAnonima       Boolean        @default(true)
+  contactoCifrado String?
+  categoria       String
+  descripcion     String
+  evidenciaUrl    String?
+  estado          EstadoDenuncia @default(RECIBIDA)
+  derivadaA       String? // organismo al que se envió
+  createdAt       DateTime       @default(now())
+  actualizadoEn   DateTime       @updatedAt
+
+  obra            Obra?          @relation(fields: [obraId], references: [id], onDelete: SetNull)
+  eventos         EventoDenuncia[]
+
+  @@index([estado])
+  @@index([obraId])
+  @@map("denuncias")
+}
+
+// Historial de estados de una denuncia; `nota` es un mensaje para el denunciante
+// (visible con su código de seguimiento).
+model EventoDenuncia {
+  id          String         @id @default(uuid())
+  denunciaId  String
+  estado      EstadoDenuncia
+  nota        String?
+  createdAt   DateTime       @default(now())
+
+  denuncia    Denuncia       @relation(fields: [denunciaId], references: [id], onDelete: Cascade)
+
+  @@index([denunciaId])
+  @@map("eventos_denuncia")
 }
 
 model Avance {

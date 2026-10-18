@@ -117,6 +117,13 @@ export function ObraAcciones({ nombre, url, qrDataUrl, slug }: ObraAccionesProps
         </ul>
       </div>
 
+      <Link
+        href={`/denuncias/nueva?obra=${slug}`}
+        className="text-center text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline print:hidden"
+      >
+        ¿Viste una irregularidad en esta obra? Denúnciala
+      </Link>
+
       <div className="flex flex-col items-center gap-2 border-t border-border pt-4 print:border-0 print:pt-0">
         <Image
           src={qrDataUrl}
