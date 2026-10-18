@@ -1,13 +1,14 @@
 import { formatearMoneda } from '@/lib/format';
 
 interface RankingEstadosProps {
-  datos: { estado: string; cantidad: number; inversion: number; avancePromedio: number }[];
+  datos: { estado: string; cantidad: number; inversionPorMoneda: Record<string, number>; avancePromedio: number }[];
+  monedas: string[];
 }
 
 // Ranking simple por avance promedio (PLAN_PROYECTO.md sección 3.1). Ver
 // MODULOS_AVANZADOS.md módulo 5 para una versión más completa (costo por
 // unidad, cumplimiento de plazos) si se retoma como mejora futura.
-export function RankingEstados({ datos }: RankingEstadosProps) {
+export function RankingEstados({ datos, monedas }: RankingEstadosProps) {
   if (datos.length === 0) {
     return <p className="text-sm text-muted-foreground">Sin datos todavía.</p>;
   }
@@ -30,7 +31,17 @@ export function RankingEstados({ datos }: RankingEstadosProps) {
               <td className="py-2 pr-4 text-muted-foreground">{i + 1}</td>
               <td className="py-2 pr-4 font-medium">{fila.estado}</td>
               <td className="py-2 pr-4">{fila.cantidad}</td>
-              <td className="py-2 pr-4">{formatearMoneda(fila.inversion, 'VES')}</td>
+              <td className="py-2 pr-4 tabular-nums">
+                {monedas.filter((m) => fila.inversionPorMoneda[m]).length === 0
+                  ? '—'
+                  : monedas
+                      .filter((m) => fila.inversionPorMoneda[m])
+                      .map((m) => (
+                        <span key={m} className="block">
+                          {formatearMoneda(fila.inversionPorMoneda[m], m)}
+                        </span>
+                      ))}
+              </td>
               <td className="py-2">
                 <div className="flex items-center gap-2">
                   <div className="h-1.5 w-24 overflow-hidden rounded-full bg-muted">

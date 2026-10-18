@@ -4,15 +4,20 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import { formatearMoneda } from '@/lib/format';
 
 interface GraficoPorEstadoProps {
-  datos: { estado: string; inversion: number }[];
+  datos: { estado: string; inversionPorMoneda: Record<string, number> }[];
+  /** Cada gráfica muestra una sola moneda: sumar bolívares con dólares no tiene sentido. */
+  moneda: string;
 }
 
-export function GraficoPorEstado({ datos }: GraficoPorEstadoProps) {
-  if (datos.length === 0) {
+export function GraficoPorEstado({ datos, moneda }: GraficoPorEstadoProps) {
+  const ordenados = datos
+    .map((d) => ({ estado: d.estado, inversion: d.inversionPorMoneda[moneda] ?? 0 }))
+    .filter((d) => d.inversion > 0)
+    .sort((a, b) => b.inversion - a.inversion);
+
+  if (ordenados.length === 0) {
     return <p className="text-sm text-muted-foreground">Sin datos todavía.</p>;
   }
-
-  const ordenados = [...datos].sort((a, b) => b.inversion - a.inversion);
 
   return (
     <div style={{ height: Math.max(200, ordenados.length * 44) }}>
@@ -21,11 +26,11 @@ export function GraficoPorEstado({ datos }: GraficoPorEstadoProps) {
           <CartesianGrid horizontal={false} strokeOpacity={0.2} />
           <XAxis
             type="number"
-            tickFormatter={(v) => formatearMoneda(Number(v), 'VES')}
+            tickFormatter={(v) => formatearMoneda(Number(v), moneda)}
             tick={{ fontSize: 11 }}
           />
           <YAxis type="category" dataKey="estado" width={110} tick={{ fontSize: 12 }} />
-          <Tooltip formatter={(valor) => formatearMoneda(Number(valor), 'VES')} />
+          <Tooltip formatter={(valor) => formatearMoneda(Number(valor), moneda)} />
           <Bar dataKey="inversion" fill="var(--color-chart-1)" radius={4} />
         </BarChart>
       </ResponsiveContainer>

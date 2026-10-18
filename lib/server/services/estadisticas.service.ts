@@ -2,11 +2,13 @@ import { prisma } from '@/lib/server/prisma';
 
 export interface EstadisticasPublicas {
   totalObras: number;
-  inversionTotal: number;
+  /** Presupuesto aprobado por moneda: nunca se suman monedas distintas. */
+  inversionPorMoneda: Record<string, number>;
+  monedas: string[];
   obrasCulminadas: number;
   avancePromedio: number;
   porTipo: { nombre: string; color: string; cantidad: number }[];
-  porEstado: { estado: string; cantidad: number; inversion: number; avancePromedio: number }[];
+  porEstado: { estado: string; cantidad: number; inversionPorMoneda: Record<string, number>; avancePromedio: number }[];
   culminadasPorAnio: { anio: number; cantidad: number }[];
 }
 
@@ -21,6 +23,7 @@ export async function obtenerEstadisticasPublicas(): Promise<EstadisticasPublica
     select: {
       avanceFisico: true,
       presupuestoAprobado: true,
+      moneda: true,
       fechaFinReal: true,
       estatus: { select: { nombre: true } },
       tipoObra: { select: { nombre: true, color: true } },
@@ -29,7 +32,10 @@ export async function obtenerEstadisticasPublicas(): Promise<EstadisticasPublica
   });
 
   const totalObras = obras.length;
-  const inversionTotal = obras.reduce((acc, o) => acc + Number(o.presupuestoAprobado), 0);
+  const inversionPorMoneda: Record<string, number> = {};
+  for (const o of obras) inversionPorMoneda[o.moneda] = (inversionPorMoneda[o.moneda] ?? 0) + Number(o.presupuestoAprobado);
+  // Bolívares primero (la moneda de la mayoría de las obras), luego el resto en orden alfabético.
+  const monedas = Object.keys(inversionPorMoneda).sort((a, b) => (a === 'VES' ? -1 : b === 'VES' ? 1 : a.localeCompare(b)));
   const obrasCulminadas = obras.filter(
     (o) => o.estatus.nombre === 'Culminada' || o.estatus.nombre === 'Inaugurada'
   ).length;
@@ -49,7 +55,7 @@ export async function obtenerEstadisticasPublicas(): Promise<EstadisticasPublica
   interface AcumEstado {
     estado: string;
     cantidad: number;
-    inversion: number;
+    inversionPorMoneda: Record<string, number>;
     avanceSuma: number;
   }
   const estadoMap = new Map<string, AcumEstado>();
@@ -57,11 +63,11 @@ export async function obtenerEstadisticasPublicas(): Promise<EstadisticasPublica
     const previo = estadoMap.get(o.estado.nombre) ?? {
       estado: o.estado.nombre,
       cantidad: 0,
-      inversion: 0,
+      inversionPorMoneda: {},
       avanceSuma: 0,
     };
     previo.cantidad += 1;
-    previo.inversion += Number(o.presupuestoAprobado);
+    previo.inversionPorMoneda[o.moneda] = (previo.inversionPorMoneda[o.moneda] ?? 0) + Number(o.presupuestoAprobado);
     previo.avanceSuma += o.avanceFisico;
     estadoMap.set(o.estado.nombre, previo);
   });
@@ -69,7 +75,7 @@ export async function obtenerEstadisticasPublicas(): Promise<EstadisticasPublica
     .map((e) => ({
       estado: e.estado,
       cantidad: e.cantidad,
-      inversion: e.inversion,
+      inversionPorMoneda: e.inversionPorMoneda,
       avancePromedio: Math.round(e.avanceSuma / e.cantidad),
     }))
     .sort((a, b) => b.avancePromedio - a.avancePromedio);
@@ -86,7 +92,8 @@ export async function obtenerEstadisticasPublicas(): Promise<EstadisticasPublica
 
   return {
     totalObras,
-    inversionTotal,
+    inversionPorMoneda,
+    monedas,
     obrasCulminadas,
     avancePromedio,
     porTipo: Array.from(tipoMap.values()),
