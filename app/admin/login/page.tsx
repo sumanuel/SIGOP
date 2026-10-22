@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useState, type FormEvent } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 function LoginForm() {
@@ -181,6 +182,9 @@ function LoginForm() {
         >
           {enviando ? 'Iniciando sesión…' : 'Iniciar sesión'}
         </button>
+        <Link href="/admin/recuperar" className="text-center text-sm text-muted-foreground hover:text-foreground">
+          ¿Olvidaste tu contraseña?
+        </Link>
       </form>
     </div>
   );

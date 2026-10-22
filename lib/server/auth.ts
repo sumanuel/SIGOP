@@ -52,7 +52,7 @@ export function verifyRefreshToken(token: string): JwtPayload {
 // Tokens de un solo propósito y vida corta (paso intermedio del 2FA). Se firman
 // con un secreto derivado distinto por propósito, para que NUNCA puedan
 // aceptarse como access/refresh token aunque alguien los reenvíe en una cookie.
-export type PropositoTokenTemporal = 'login-2fa' | 'configurar-2fa';
+export type PropositoTokenTemporal = 'login-2fa' | 'configurar-2fa' | 'recuperar-password';
 
 function secretoTemporal(proposito: PropositoTokenTemporal): string {
   return `${getSecret('JWT_REFRESH_SECRET')}:temporal:${proposito}`;

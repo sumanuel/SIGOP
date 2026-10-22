@@ -12,7 +12,9 @@ import type { NextRequest } from 'next/server';
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const isAdminRoute = pathname.startsWith('/admin') && pathname !== '/admin/login';
+  // Páginas de /admin que se usan SIN sesión: iniciar sesión y recuperar la contraseña.
+  const RUTAS_PUBLICAS_ADMIN = ['/admin/login', '/admin/recuperar', '/admin/restablecer'];
+  const isAdminRoute = pathname.startsWith('/admin') && !RUTAS_PUBLICAS_ADMIN.includes(pathname);
 
   if (isAdminRoute) {
     const accessToken = request.cookies.get('accessToken')?.value;
