@@ -2,6 +2,7 @@ import { prisma } from '@/lib/server/prisma';
 import { registrarAuditoria } from '@/lib/server/services/auditoria.service';
 import type { CrearAvanceInput } from '@/lib/server/validators/avance.schema';
 import { registrarIntegridad } from '@/lib/server/services/integridad.service';
+import { notificarSuscriptores } from '@/lib/server/services/suscripciones.service';
 import { datosSelladosDeAvance } from '@/lib/server/integridad/hash';
 
 export async function listarAvancesDeObra(obraId: string) {
@@ -63,6 +64,13 @@ export async function crearAvance(
     entidad: 'Avance',
     entidadId: avance.id,
     datosDespues: avance,
+  });
+
+  // Aviso a los suscriptores en segundo plano: un fallo de correo no afecta al avance ya guardado.
+  void notificarSuscriptores(obraId, {
+    tipo: 'AVANCE',
+    avanceFisico: data.avanceFisico,
+    avanceFinanciero: data.avanceFinanciero,
   });
 
   return avance;

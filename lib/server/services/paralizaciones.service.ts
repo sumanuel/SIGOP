@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/server/prisma';
 import { registrarAuditoria } from '@/lib/server/services/auditoria.service';
-import { diasEntre, type MotivoParalizacionClave } from '@/lib/paralizacion';
+import { notificarSuscriptores } from '@/lib/server/services/suscripciones.service';
+import { MOTIVO_LEGIBLE, diasEntre, type MotivoParalizacionClave } from '@/lib/paralizacion';
 import type { CambioParalizacionInput } from '@/lib/server/validators/paralizacion.schema';
 
 // MODULOS_AVANZADOS.md, módulo 2: una obra puede paralizarse varias veces; cada
@@ -97,6 +98,7 @@ export async function cambiarParalizacion(obraId: string, data: CambioParalizaci
       datosAntes: { estatusId: obra.estatusId },
       datosDespues: { estatusId: estatus.id, periodo },
     });
+    void notificarSuscriptores(obraId, { tipo: 'PARALIZADA', motivo: MOTIVO_LEGIBLE[data.motivo].toLowerCase() });
     return periodo;
   }
 
@@ -125,6 +127,7 @@ export async function cambiarParalizacion(obraId: string, data: CambioParalizaci
     datosAntes: { estatusId: obra.estatusId, periodo: abierto },
     datosDespues: { estatusId: estatus.id, periodo },
   });
+  void notificarSuscriptores(obraId, { tipo: 'REACTIVADA' });
   return periodo;
 }
 

@@ -9,6 +9,8 @@ export interface CorreoSaliente {
   para: string;
   asunto: string;
   texto: string;
+  /** Encabezados extra, p. ej. List-Unsubscribe en los avisos masivos. */
+  encabezados?: Record<string, string>;
 }
 
 export interface ResultadoEnvio {
@@ -51,6 +53,7 @@ export async function enviarCorreo(correo: CorreoSaliente): Promise<ResultadoEnv
     to: correo.para,
     subject: correo.asunto,
     text: correo.texto,
+    headers: correo.encabezados,
   });
   return { enviado: true, modo: 'smtp' };
 }

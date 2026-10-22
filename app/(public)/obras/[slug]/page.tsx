@@ -13,6 +13,7 @@ import { ObraReportes } from '@/components/obra/obra-reportes';
 import { ObraParalizaciones } from '@/components/obra/obra-paralizaciones';
 import { ObraIntegridad } from '@/components/obra/obra-integridad';
 import { ObraContratacion } from '@/components/obra/obra-contratacion';
+import { ObraSuscripcion } from '@/components/obra/obra-suscripcion';
 import type { ObraMapa } from '@/lib/types/obra';
 import { calcularAtrasoDias } from '@/lib/atraso';
 
@@ -151,6 +152,8 @@ export default async function ObraFichaPage({ params }: PageProps) {
             moneda={obra.moneda}
             fuenteFinanciamiento={obra.fuenteFinanciamiento}
           />
+
+          <ObraSuscripcion slug={obra.slug} />
 
           <ObraAcciones nombre={obra.nombre} url={urlObra} qrDataUrl={qrDataUrl} slug={obra.slug} />
         </div>
