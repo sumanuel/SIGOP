@@ -4,7 +4,7 @@ import {
   signAccessToken,
   signRefreshToken,
   verifyRefreshToken,
-  type JwtPayload,
+  payloadDeSesion,
 } from '@/lib/server/auth';
 import { registrarAuditoria } from '@/lib/server/services/auditoria.service';
 import { crearTokenLogin2fa } from '@/lib/server/services/dos-factores.service';
@@ -28,12 +28,7 @@ export async function autenticarUsuario(email: string, password: string) {
     return { requiere2fa: true as const, token2fa: crearTokenLogin2fa(usuario.id) };
   }
 
-  const payload: JwtPayload = {
-    sub: usuario.id,
-    email: usuario.email,
-    rol: usuario.rol,
-    enteId: usuario.enteId,
-  };
+  const payload = payloadDeSesion(usuario);
 
   const accessToken = signAccessToken(payload);
   const refreshToken = signRefreshToken(payload);
@@ -45,7 +40,7 @@ export async function autenticarUsuario(email: string, password: string) {
     entidadId: usuario.id,
   });
 
-  return { requiere2fa: false as const, usuario, accessToken, refreshToken };
+  return { requiere2fa: false as const, usuario, accessToken, refreshToken, debeConfigurar2fa: Boolean(payload.sin2fa) };
 }
 
 /**
@@ -59,16 +54,11 @@ export async function renovarSesion(refreshToken: string) {
 
   const usuario = await prisma.usuario.findUnique({
     where: { id: payload.sub },
-    select: { id: true, email: true, rol: true, enteId: true, activo: true },
+    select: { id: true, email: true, rol: true, enteId: true, activo: true, twoFactorSecret: true },
   });
   if (!usuario || !usuario.activo) throw new Error('Cuenta inactiva');
 
-  const nuevoPayload: JwtPayload = {
-    sub: usuario.id,
-    email: usuario.email,
-    rol: usuario.rol,
-    enteId: usuario.enteId,
-  };
+  const nuevoPayload = payloadDeSesion(usuario);
 
   return {
     accessToken: signAccessToken(nuevoPayload),

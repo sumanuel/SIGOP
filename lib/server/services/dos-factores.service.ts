@@ -6,7 +6,9 @@ import {
   signAccessToken,
   signRefreshToken,
   verificarTokenTemporal,
-  type JwtPayload,
+  payloadDeSesion,
+  dosFactoresObligatorio,
+  ROLES_CON_2FA_OBLIGATORIA,
 } from '@/lib/server/auth';
 import { cifrarSecreto, descifrarSecreto } from '@/lib/server/secret-box';
 import { construirUriOtpauth, generarSecretoTotp, verificarCodigoTotp } from '@/lib/server/totp';
@@ -52,7 +54,7 @@ export async function completarLoginConCodigo(tokenLogin: string, codigo: string
     throw new DosFactoresError(401, 'Código incorrecto. Revisa tu app de autenticación.');
   }
 
-  const payload: JwtPayload = { sub: usuario.id, email: usuario.email, rol: usuario.rol, enteId: usuario.enteId };
+  const payload = payloadDeSesion(usuario);
 
   await registrarAuditoria({ usuarioId: usuario.id, accion: 'LOGIN', entidad: 'Usuario', entidadId: usuario.id });
 
@@ -110,6 +112,9 @@ export async function desactivarPropio(usuarioId: string, password: string, codi
   const usuario = await prisma.usuario.findUnique({ where: { id: usuarioId } });
   if (!usuario || !usuario.twoFactorSecret) {
     throw new DosFactoresError(409, 'La verificación en dos pasos no está activada.');
+  }
+  if (dosFactoresObligatorio() && ROLES_CON_2FA_OBLIGATORIA.includes(usuario.rol)) {
+    throw new DosFactoresError(403, 'Tu rol exige la verificación en dos pasos: no se puede desactivar.');
   }
   if (!(await comparePassword(password, usuario.password))) {
     throw new DosFactoresError(400, 'La contraseña es incorrecta.');

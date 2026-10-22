@@ -10,6 +10,20 @@ interface Bucket {
 
 const buckets = new Map<string, Bucket>();
 
+// Sin esto el mapa crecería con cada IP/correo distinto hasta el reinicio.
+const MAX_CLAVES = 5000;
+
+function purgarVencidos(ahora: number) {
+  for (const [clave, bucket] of buckets) {
+    if (ahora > bucket.resetAt) buckets.delete(clave);
+  }
+}
+
+/** Olvida el conteo de `key` (p. ej. tras un login correcto, para que no cuente como fallo). */
+export function liberarLimite(key: string) {
+  buckets.delete(key);
+}
+
 /**
  * true si `key` superó `limite` intentos dentro de `ventanaMs`.
  * Cada llamada cuenta como un intento.
@@ -19,6 +33,7 @@ export function estaLimitado(key: string, limite: number, ventanaMs: number): bo
   const bucket = buckets.get(key);
 
   if (!bucket || ahora > bucket.resetAt) {
+    if (buckets.size >= MAX_CLAVES) purgarVencidos(ahora);
     buckets.set(key, { count: 1, resetAt: ahora + ventanaMs });
     return false;
   }

@@ -3,6 +3,9 @@ import { ZodError } from 'zod';
 import { requireAuth, AuthError } from '@/lib/server/require-auth';
 import { activar2faSchema } from '@/lib/server/validators/dos-factores.schema';
 import { confirmarConfiguracion, DosFactoresError } from '@/lib/server/services/dos-factores.service';
+import { prisma } from '@/lib/server/prisma';
+import { payloadDeSesion, signAccessToken, signRefreshToken } from '@/lib/server/auth';
+import { setAuthCookies } from '@/lib/server/auth-cookies';
 import { estaLimitado } from '@/lib/server/rate-limit';
 
 // POST /api/auth/2fa/activar — confirma con un código y guarda el secreto.
@@ -16,7 +19,15 @@ export async function POST(request: NextRequest) {
     }
 
     await confirmarConfiguracion(usuario.sub, tokenConfiguracion, codigo);
-    return NextResponse.json({ activo: true });
+
+    // Ya con 2FA: se reemite la sesión sin la marca `sin2fa` para que el panel se desbloquee al instante.
+    const actual = await prisma.usuario.findUnique({ where: { id: usuario.sub } });
+    const response = NextResponse.json({ activo: true });
+    if (actual) {
+      const payload = payloadDeSesion(actual);
+      setAuthCookies(response, { accessToken: signAccessToken(payload), refreshToken: signRefreshToken(payload) });
+    }
+    return response;
   } catch (error) {
     if (error instanceof AuthError || error instanceof DosFactoresError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

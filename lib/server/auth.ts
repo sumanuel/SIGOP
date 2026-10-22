@@ -19,6 +19,37 @@ export interface JwtPayload {
   email: string;
   rol: string;
   enteId: string | null;
+  /** Rol que exige 2FA y todavía no la tiene: la sesión solo sirve para configurarla. */
+  sin2fa?: boolean;
+}
+
+/** Roles con poder de publicar o administrar: la verificación en dos pasos es obligatoria. */
+export const ROLES_CON_2FA_OBLIGATORIA = ['SUPER_ADMIN', 'ADMIN_ENTE', 'APROBADOR'];
+
+/**
+ * TWO_FACTOR_REQUIRED=true|false lo fuerza; sin definir, se exige en producción
+ * y no en desarrollo (para no estorbar las pruebas locales).
+ */
+export function dosFactoresObligatorio(): boolean {
+  const valor = process.env.TWO_FACTOR_REQUIRED;
+  if (valor === 'true') return true;
+  if (valor === 'false') return false;
+  return process.env.NODE_ENV === 'production';
+}
+
+/** Contenido del JWT de sesión para un usuario; marca `sin2fa` cuando corresponde. */
+export function payloadDeSesion(u: {
+  id: string;
+  email: string;
+  rol: string;
+  enteId: string | null;
+  twoFactorSecret: string | null;
+}): JwtPayload {
+  const payload: JwtPayload = { sub: u.id, email: u.email, rol: u.rol, enteId: u.enteId };
+  if (dosFactoresObligatorio() && ROLES_CON_2FA_OBLIGATORIA.includes(u.rol) && !u.twoFactorSecret) {
+    payload.sin2fa = true;
+  }
+  return payload;
 }
 
 function getSecret(name: 'JWT_ACCESS_SECRET' | 'JWT_REFRESH_SECRET'): string {

@@ -31,6 +31,11 @@ export function requireAuth(request: NextRequest, rolesPermitidos?: string[]): J
     throw new AuthError(401, 'Sesión inválida o expirada');
   }
 
+  // Rol que exige 2FA sin tenerla: solo puede usar /api/auth/* (configurarla, salir).
+  if (payload.sin2fa && !request.nextUrl.pathname.startsWith('/api/auth/')) {
+    throw new AuthError(403, 'Debes activar la verificación en dos pasos para continuar (Seguridad de la cuenta).');
+  }
+
   if (rolesPermitidos && !rolesPermitidos.includes(payload.rol)) {
     throw new AuthError(403, 'No tienes permisos para realizar esta acción');
   }

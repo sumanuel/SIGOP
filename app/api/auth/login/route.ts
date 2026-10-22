@@ -4,7 +4,7 @@ import { loginSchema } from '@/lib/server/validators/auth.schema';
 import { autenticarUsuario } from '@/lib/server/services/auth.service';
 import { setAuthCookies } from '@/lib/server/auth-cookies';
 import { obtenerIpCliente } from '@/lib/server/get-client-ip';
-import { estaLimitado } from '@/lib/server/rate-limit';
+import { estaLimitado, liberarLimite } from '@/lib/server/rate-limit';
 
 // POST /api/auth/login
 export async function POST(request: NextRequest) {
@@ -16,7 +16,8 @@ export async function POST(request: NextRequest) {
     // intentos cada 15 min por IP+correo, para frenar fuerza bruta sin
     // afectar a alguien que solo se equivocó una vez de contraseña.
     const ip = obtenerIpCliente(request);
-    if (estaLimitado(`login:${ip}:${email}`, 8, 15 * 60 * 1000)) {
+    const claveLimite = `login:${ip}:${email}`;
+    if (estaLimitado(claveLimite, 8, 15 * 60 * 1000)) {
       return NextResponse.json(
         { error: 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.' },
         { status: 429 }
@@ -33,10 +34,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ requiere2fa: true, token2fa: resultado.token2fa });
     }
 
-    const { usuario, accessToken, refreshToken } = resultado;
+    liberarLimite(claveLimite);
+    const { usuario, accessToken, refreshToken, debeConfigurar2fa } = resultado;
 
     const response = NextResponse.json({
       usuario: { id: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: usuario.rol },
+      debeConfigurar2fa,
     });
     setAuthCookies(response, { accessToken, refreshToken });
     return response;

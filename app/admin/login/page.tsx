@@ -77,6 +77,11 @@ function LoginForm() {
         return;
       }
 
+      if (data.debeConfigurar2fa) {
+        router.push('/admin/seguridad');
+        return;
+      }
+
       entrar();
     } catch {
       setError('Error de conexión. Verifica tu internet e intenta de nuevo.');
