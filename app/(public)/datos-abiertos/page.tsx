@@ -28,6 +28,9 @@ const FORMATOS = [
   },
 ] as const;
 
+// Ruta de la API (no una página): se enlaza con <a>, no con <Link>.
+const URL_OC4IDS = '/api/datos-abiertos/oc4ids';
+
 export default function DatosAbiertosPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
@@ -73,6 +76,35 @@ export default function DatosAbiertosPage() {
         <p className="mt-3 text-sm text-muted-foreground">
           Para integrarlo desde un programa:{' '}
           <code className="rounded bg-muted px-1 py-0.5 text-xs">/api/datos-abiertos/obras?formato=json</code>
+        </p>
+      </section>
+
+      <section className="mt-6 rounded-xl border border-border bg-card p-5 shadow-sm">
+        <h2 className="text-lg font-semibold">Estándar internacional OC4IDS</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Las mismas obras en el formato{' '}
+          <a
+            href="https://standard.open-contracting.org/infrastructure/latest/es/"
+            className="font-medium text-primary underline-offset-4 hover:underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Open Contracting for Infrastructure Data Standard (OC4IDS)
+          </a>
+          , el que usan portales de transparencia de infraestructura de otros países y que facilita
+          compararlos. Incluye presupuesto, ubicación, contrato y adendas cuando existen.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-3 text-sm">
+          <a
+            href={URL_OC4IDS}
+            className="inline-flex min-h-11 items-center rounded-md border border-border px-4 font-medium hover:bg-muted"
+          >
+            Ver paquete OC4IDS (JSON)
+          </a>
+        </div>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Una sola obra por su código:{' '}
+          <code className="rounded bg-muted px-1 py-0.5 text-xs">/api/datos-abiertos/oc4ids/OBR-2026-00001</code>
         </p>
       </section>
 
