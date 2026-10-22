@@ -2,6 +2,12 @@ import { prisma } from '@/lib/server/prisma';
 import { registrarAuditoria } from '@/lib/server/services/auditoria.service';
 import type { CrearPersonaInput, ActualizarPersonaInput } from '@/lib/server/validators/persona.schema';
 
+// La cédula es privada: la bitácora la ve el rol CONSULTA, así que no se copia ahí.
+const sinCedula = <T extends { documentoIdentidad?: string | null }>(p: T) => ({
+  ...p,
+  documentoIdentidad: p.documentoIdentidad ? '[privado]' : null,
+});
+
 /** Directorio único de personas (una persona puede estar en varias obras). */
 export async function listarPersonas() {
   return prisma.persona.findMany({
@@ -34,7 +40,7 @@ export async function crearPersona(data: CrearPersonaInput, usuarioId: string) {
     accion: 'CREATE',
     entidad: 'Persona',
     entidadId: persona.id,
-    datosDespues: persona,
+    datosDespues: sinCedula(persona),
   });
 
   return persona;
@@ -64,8 +70,8 @@ export async function actualizarPersona(id: string, data: ActualizarPersonaInput
     accion: 'UPDATE',
     entidad: 'Persona',
     entidadId: id,
-    datosAntes: antes,
-    datosDespues: persona,
+    datosAntes: sinCedula(antes),
+    datosDespues: sinCedula(persona),
   });
 
   return persona;
@@ -83,7 +89,7 @@ export async function eliminarPersona(id: string, usuarioId: string) {
     accion: 'DELETE',
     entidad: 'Persona',
     entidadId: id,
-    datosAntes: persona,
+    datosAntes: sinCedula(persona),
   });
 
   return persona;

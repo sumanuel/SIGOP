@@ -17,7 +17,8 @@ export async function crearReporteCiudadano(obraId: string, data: CrearReporteIn
     return { id: 'omitido', simulado: true as const };
   }
 
-  const obra = await prisma.obra.findUnique({ where: { id: obraId }, select: { id: true } });
+  // Solo obras publicadas reciben reportes: las demás no existen para el público.
+  const obra = await prisma.obra.findFirst({ where: { id: obraId, estadoPublicacion: 'PUBLICADO' }, select: { id: true } });
   if (!obra) return null;
 
   return prisma.reporteCiudadano.create({
