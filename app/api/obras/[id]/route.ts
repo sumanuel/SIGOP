@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { ZodError } from 'zod';
-import { obtenerObraDetalle, actualizarObra, eliminarObra } from '@/lib/server/services/obras.service';
+import { obtenerObraDetalle, actualizarObra, eliminarObra, ObraError } from '@/lib/server/services/obras.service';
 import { actualizarObraSchema, errorDeTrazado } from '@/lib/server/validators/obra.schema';
 import { requireAuth, AuthError } from '@/lib/server/require-auth';
 import { ParalizacionError } from '@/lib/server/services/paralizaciones.service';
@@ -52,7 +52,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
     return NextResponse.json({ obra });
   } catch (error) {
-    if (error instanceof AuthError || error instanceof ParalizacionError) {
+    if (error instanceof AuthError || error instanceof ParalizacionError || error instanceof ObraError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
     if (error instanceof ZodError) {

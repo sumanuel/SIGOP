@@ -7,6 +7,7 @@ import {
   contratistaSchema,
   fuenteFinanciamientoSchema,
   cargoSchema,
+  partidaPresupuestariaSchema,
 } from '@/lib/server/validators/catalogo.schema';
 
 /**
@@ -15,7 +16,7 @@ import {
  * catálogo; los contactos de contratistas requieren `conContacto` (admin).
  */
 export async function obtenerCatalogos(opts: { conContacto?: boolean } = {}) {
-  const [tiposObra, estatusObra, entes, contratistas, fuentesFinanciamiento, estados, municipios, parroquias] =
+  const [tiposObra, estatusObra, entes, contratistas, fuentesFinanciamiento, partidas, estados, municipios, parroquias] =
     await Promise.all([
       prisma.tipoObra.findMany({ orderBy: { nombre: 'asc' } }),
       prisma.estatusObra.findMany({ orderBy: { orden: 'asc' } }),
@@ -26,6 +27,7 @@ export async function obtenerCatalogos(opts: { conContacto?: boolean } = {}) {
         select: { id: true, razonSocial: true, rif: true, contacto: opts.conContacto, telefono: opts.conContacto, email: opts.conContacto },
       }),
       prisma.fuenteFinanciamiento.findMany({ orderBy: { nombre: 'asc' } }),
+      prisma.partidaPresupuestaria.findMany({ orderBy: [{ ejercicioFiscal: 'desc' }, { codigo: 'asc' }] }),
       prisma.estado.findMany({ orderBy: { nombre: 'asc' }, select: { id: true, nombre: true, codigo: true } }),
       prisma.municipio.findMany({
         orderBy: { nombre: 'asc' },
@@ -37,7 +39,7 @@ export async function obtenerCatalogos(opts: { conContacto?: boolean } = {}) {
       }),
     ]);
 
-  return { tiposObra, estatusObra, entes, contratistas, fuentesFinanciamiento, estados, municipios, parroquias };
+  return { tiposObra, estatusObra, entes, contratistas, fuentesFinanciamiento, partidas, estados, municipios, parroquias };
 }
 
 export type Catalogos = Awaited<ReturnType<typeof obtenerCatalogos>>;
@@ -111,6 +113,14 @@ const RECURSOS_CATALOGO = {
     delegado: prisma.fuenteFinanciamiento as unknown as DelegadoCatalogo,
     orderBy: { nombre: 'asc' },
     campoObraEnUso: 'fuenteFinanciamientoId' as const,
+  },
+  'partidas-presupuestarias': {
+    entidadAuditoria: 'PartidaPresupuestaria',
+    etiqueta: 'la partida presupuestaria',
+    schema: partidaPresupuestariaSchema,
+    delegado: prisma.partidaPresupuestaria as unknown as DelegadoCatalogo,
+    orderBy: [{ ejercicioFiscal: 'desc' }, { codigo: 'asc' }],
+    campoObraEnUso: 'partidaPresupuestariaId' as const,
   },
   cargos: {
     entidadAuditoria: 'Cargo',

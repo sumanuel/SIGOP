@@ -15,6 +15,7 @@ export interface ObraParaOc4ids {
   estatus: string;
   ente: string;
   fuenteFinanciamiento: string | null;
+  partida: { codigo: string; descripcion: string; ejercicioFiscal: number } | null;
   contratista: { razonSocial: string; rif: string | null } | null;
   estado: string;
   municipio: string;
@@ -209,6 +210,10 @@ export function mapearAOc4ids(obra: ObraParaOc4ids, origen: string) {
     status: estado,
     type: tipoProyectoAOc4ids(obra.nombre),
     ...(sector ? { sector: [sector] } : {}),
+    // La partida del presupuesto oficial que respalda la obra (módulo 10).
+    ...(obra.partida
+      ? { additionalClassifications: [{ scheme: 'VE-PARTIDA-PRESUPUESTARIA', id: obra.partida.codigo, description: `${obra.partida.descripcion} (ejercicio fiscal ${obra.partida.ejercicioFiscal})` }] }
+      : {}),
     ...(proposito ? { purpose: proposito } : {}),
     budget: {
       description: 'Presupuesto aprobado de la obra.',

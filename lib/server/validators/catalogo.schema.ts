@@ -50,3 +50,10 @@ export const cargoSchema = z.object({
   area: z.string().max(60).nullish(),
 });
 export type CargoInput = z.infer<typeof cargoSchema>;
+
+export const partidaPresupuestariaSchema = z.object({
+  codigo: z.string().trim().min(3).max(40),
+  descripcion: z.string().trim().min(3).max(300),
+  ejercicioFiscal: z.number().int().min(1990).max(2100),
+});
+export type PartidaPresupuestariaInput = z.infer<typeof partidaPresupuestariaSchema>;

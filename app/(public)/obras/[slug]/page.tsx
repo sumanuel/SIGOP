@@ -13,6 +13,7 @@ import { ObraReportes } from '@/components/obra/obra-reportes';
 import { ObraParalizaciones } from '@/components/obra/obra-paralizaciones';
 import { ObraIntegridad } from '@/components/obra/obra-integridad';
 import { ObraContratacion } from '@/components/obra/obra-contratacion';
+import { ObraPresupuesto } from '@/components/obra/obra-presupuesto';
 import { ObraSuscripcion } from '@/components/obra/obra-suscripcion';
 import type { ObraMapa } from '@/lib/types/obra';
 import { calcularAtrasoDias } from '@/lib/atraso';
@@ -130,6 +131,8 @@ export default async function ObraFichaPage({ params }: PageProps) {
             contrato={obra.contrato}
             contratista={obra.contratista ? { id: obra.contratista.id, razonSocial: obra.contratista.razonSocial } : null}
           />
+
+          <ObraPresupuesto partida={obra.partidaPresupuestaria} historial={obra.historialPresupuesto} />
 
           <ObraAvanceChart
             avanceFisico={obra.avanceFisico}

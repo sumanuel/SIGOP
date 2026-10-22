@@ -1,6 +1,6 @@
 'use client';
 
-import { Tags, ListChecks, Landmark, HardHat, Coins, UserCog } from 'lucide-react';
+import { Tags, ListChecks, Landmark, HardHat, Coins, UserCog, FileText } from 'lucide-react';
 import { AdminNav } from '@/components/admin/admin-nav';
 import { CatalogoEditor } from '@/components/admin/catalogo-editor';
 
@@ -79,6 +79,21 @@ export default function AdminCatalogosPage() {
           colorClase="border-emerald-300/60 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
           campos={[{ key: 'nombre', label: 'Nombre', tipo: 'text' }]}
         />
+
+        <div className="xl:col-span-2">
+          <CatalogoEditor
+            recurso="partidas-presupuestarias"
+            titulo="Partidas presupuestarias"
+            descripcion="Código oficial del presupuesto (Ley de Presupuesto u ordenanza) que respalda cada obra. Una partida en uso no se puede eliminar."
+            icono={FileText}
+            colorClase="border-teal-300/60 bg-teal-500/10 text-teal-700 dark:text-teal-400"
+            campos={[
+              { key: 'codigo', label: 'Código (ej. 301-01-02-15)', tipo: 'text' },
+              { key: 'descripcion', label: 'Descripción', tipo: 'text' },
+              { key: 'ejercicioFiscal', label: 'Ejercicio fiscal (año)', tipo: 'number' },
+            ]}
+          />
+        </div>
 
         <CatalogoEditor
           recurso="cargos"

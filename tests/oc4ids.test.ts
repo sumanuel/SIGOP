@@ -32,6 +32,7 @@ const obraBase: ObraParaOc4ids = {
   estatus: 'En ejecución',
   ente: 'Ministerio de Obras Públicas',
   fuenteFinanciamiento: 'Presupuesto nacional',
+  partida: { codigo: '301-01-02-15', descripcion: 'Infraestructura hospitalaria', ejercicioFiscal: 2026 },
   contratista: { razonSocial: 'Constructora Andina C.A.', rif: 'J-30123456-7' },
   estado: 'Miranda',
   municipio: 'Sucre',
@@ -81,6 +82,7 @@ describe('mapearAOc4ids', () => {
       ...obraBase,
       descripcion: null,
       fuenteFinanciamiento: null,
+      partida: null,
       contratista: null,
       parroquia: null,
       direccion: null,
@@ -124,6 +126,13 @@ describe('mapearAOc4ids', () => {
     expect(proceso.summary.modifications).toHaveLength(1);
     // firma 2026-01-20 + 365 + 30 días
     expect(proceso.summary.contractPeriod.endDate).toBe(new Date(d('2026-01-20T00:00:00Z').getTime() + 395 * 86_400_000).toISOString());
+  });
+
+  it('incluye la partida presupuestaria como clasificación adicional', () => {
+    const proyecto = mapearAOc4ids(obraBase, ORIGEN);
+    expect(proyecto.additionalClassifications).toEqual([
+      expect.objectContaining({ scheme: 'VE-PARTIDA-PRESUPUESTARIA', id: '301-01-02-15' }),
+    ]);
   });
 
   it('no incluye contactos ni identificadores internos', () => {

@@ -92,6 +92,7 @@ export default async function EditarObraPage({ params }: PageProps) {
             enteId: obra.enteId,
             contratistaId: obra.contratistaId ?? '',
             fuenteFinanciamientoId: obra.fuenteFinanciamientoId ?? '',
+            partidaPresupuestariaId: obra.partidaPresupuestariaId ?? '',
             estadoId: obra.estadoId,
             municipioId: obra.municipioId,
             parroquiaId: obra.parroquiaId ?? '',

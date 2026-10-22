@@ -18,6 +18,7 @@ interface ObraFormValues {
   enteId: string;
   contratistaId: string;
   fuenteFinanciamientoId: string;
+  partidaPresupuestariaId: string;
   estadoId: string;
   municipioId: string;
   parroquiaId: string;
@@ -28,6 +29,8 @@ interface ObraFormValues {
   trazado: [number, number][];
   trazadoTipo: 'LINEA' | 'AREA';
   presupuestoAprobado: number;
+  motivoCambioPresupuesto: string;
+  documentoCambioPresupuestoUrl: string;
   montoEjecutado: number;
   moneda: string;
   fechaAprobacion: string;
@@ -49,6 +52,7 @@ const VALORES_VACIOS: ObraFormValues = {
   enteId: '',
   contratistaId: '',
   fuenteFinanciamientoId: '',
+  partidaPresupuestariaId: '',
   estadoId: '',
   municipioId: '',
   parroquiaId: '',
@@ -59,6 +63,8 @@ const VALORES_VACIOS: ObraFormValues = {
   trazado: [],
   trazadoTipo: 'LINEA',
   presupuestoAprobado: 0,
+  motivoCambioPresupuesto: '',
+  documentoCambioPresupuestoUrl: '',
   montoEjecutado: 0,
   moneda: 'VES',
   fechaAprobacion: '',
@@ -89,6 +95,9 @@ export function ObraForm({ catalogos, obraId, valoresIniciales }: ObraFormProps)
   const mostrar = (n: number) => !modoPasos || paso === n;
 
   const [valores, setValores] = useState<ObraFormValues>({ ...VALORES_VACIOS, ...valoresIniciales });
+  // En edición, cambiar el presupuesto obliga a justificarlo (queda en el historial público).
+  const [presupuestoOriginal] = useState(valoresIniciales?.presupuestoAprobado);
+  const cambiaPresupuesto = esEdicion && valores.presupuestoAprobado !== presupuestoOriginal;
   const [slugTocado, setSlugTocado] = useState(esEdicion); // en edición no se auto-regenera
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -199,6 +208,7 @@ export function ObraForm({ catalogos, obraId, valoresIniciales }: ObraFormProps)
       enteId: valores.enteId,
       contratistaId: valores.contratistaId || undefined,
       fuenteFinanciamientoId: valores.fuenteFinanciamientoId || undefined,
+      partidaPresupuestariaId: valores.partidaPresupuestariaId || (esEdicion ? null : undefined),
       estadoId: valores.estadoId,
       municipioId: valores.municipioId,
       parroquiaId: valores.parroquiaId || undefined,
@@ -209,6 +219,8 @@ export function ObraForm({ catalogos, obraId, valoresIniciales }: ObraFormProps)
         valores.tieneTrazado && valores.trazado.length >= puntosMinimos ? valores.trazado : esEdicion ? null : undefined,
       trazadoTipo: valores.tieneTrazado ? valores.trazadoTipo : undefined,
       presupuestoAprobado: valores.presupuestoAprobado,
+      motivoCambioPresupuesto: cambiaPresupuesto ? valores.motivoCambioPresupuesto : undefined,
+      documentoCambioPresupuestoUrl: cambiaPresupuesto && valores.documentoCambioPresupuestoUrl ? valores.documentoCambioPresupuestoUrl : undefined,
       montoEjecutado: valores.montoEjecutado,
       moneda: valores.moneda,
       fechaAprobacion: isoOUndefined(valores.fechaAprobacion),
@@ -552,6 +564,33 @@ export function ObraForm({ catalogos, obraId, valoresIniciales }: ObraFormProps)
             className={inputClass}
           />
         </Campo>
+        {cambiaPresupuesto && (
+          <div className="flex flex-col gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 sm:col-span-2">
+            <p className="text-sm text-amber-900 dark:text-amber-200">
+              Cambiaste el presupuesto aprobado. El cambio y su motivo quedarán en el historial público de la obra.
+            </p>
+            <Campo label="Motivo del cambio">
+              <textarea
+                required
+                minLength={10}
+                maxLength={500}
+                rows={2}
+                value={valores.motivoCambioPresupuesto}
+                onChange={(e) => actualizar('motivoCambioPresupuesto', e.target.value)}
+                className={inputClass}
+              />
+            </Campo>
+            <Campo label="Enlace al documento que lo respalda (opcional)">
+              <input
+                type="url"
+                value={valores.documentoCambioPresupuestoUrl}
+                onChange={(e) => actualizar('documentoCambioPresupuestoUrl', e.target.value)}
+                placeholder="https://…"
+                className={inputClass}
+              />
+            </Campo>
+          </div>
+        )}
         <Campo label="Monto ejecutado">
           <input
             type="number"
@@ -578,6 +617,20 @@ export function ObraForm({ catalogos, obraId, valoresIniciales }: ObraFormProps)
             {catalogos.fuentesFinanciamiento.map((f) => (
               <option key={f.id} value={f.id}>
                 {f.nombre}
+              </option>
+            ))}
+          </select>
+        </Campo>
+        <Campo label="Partida presupuestaria (opcional)">
+          <select
+            value={valores.partidaPresupuestariaId}
+            onChange={(e) => actualizar('partidaPresupuestariaId', e.target.value)}
+            className={inputClass}
+          >
+            <option value="">Sin especificar</option>
+            {catalogos.partidas.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.codigo} — {p.descripcion} ({p.ejercicioFiscal})
               </option>
             ))}
           </select>

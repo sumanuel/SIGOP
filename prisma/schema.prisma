@@ -90,13 +90,13 @@ enum MotivoParalizacion {
 // ========================================
 
 model Estado {
-  id         String      @id @default(uuid())
-  nombre     String      @unique
-  codigo     String      @unique
+  id        String                                       @id @default(uuid())
+  nombre    String                                       @unique
+  codigo    String                                       @unique
   // Polígono del límite del estado, usado para "obras dentro de este estado"
-  geometria  Unsupported("geometry(MultiPolygon, 4326)")?
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  geometria Unsupported("geometry(MultiPolygon, 4326)")?
+  createdAt DateTime                                     @default(now())
+  updatedAt DateTime                                     @updatedAt
 
   municipios Municipio[]
   obras      Obra[]
@@ -106,12 +106,12 @@ model Estado {
 }
 
 model Municipio {
-  id         String      @id @default(uuid())
-  nombre     String
-  estadoId   String
-  geometria  Unsupported("geometry(MultiPolygon, 4326)")?
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  id        String                                       @id @default(uuid())
+  nombre    String
+  estadoId  String
+  geometria Unsupported("geometry(MultiPolygon, 4326)")?
+  createdAt DateTime                                     @default(now())
+  updatedAt DateTime                                     @updatedAt
 
   estado     Estado      @relation(fields: [estadoId], references: [id], onDelete: Restrict)
   parroquias Parroquia[]
@@ -123,15 +123,15 @@ model Municipio {
 }
 
 model Parroquia {
-  id          String    @id @default(uuid())
+  id          String                                       @id @default(uuid())
   nombre      String
   municipioId String
   geometria   Unsupported("geometry(MultiPolygon, 4326)")?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime                                     @default(now())
+  updatedAt   DateTime                                     @updatedAt
 
-  municipio   Municipio @relation(fields: [municipioId], references: [id], onDelete: Restrict)
-  obras       Obra[]
+  municipio Municipio @relation(fields: [municipioId], references: [id], onDelete: Restrict)
+  obras     Obra[]
 
   @@unique([municipioId, nombre])
   @@index([municipioId])
@@ -149,7 +149,7 @@ model TipoObra {
   color     String?
   createdAt DateTime @default(now())
 
-  obras     Obra[]
+  obras Obra[]
 
   @@map("tipos_obra")
 }
@@ -161,21 +161,21 @@ model EstatusObra {
   orden     Int      @default(0)
   createdAt DateTime @default(now())
 
-  obras     Obra[]
+  obras Obra[]
 
   @@map("estatus_obra")
 }
 
 model Ente {
-  id        String    @id @default(uuid())
-  nombre    String    @unique
+  id        String   @id @default(uuid())
+  nombre    String   @unique
   siglas    String?
   logoUrl   String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  obras     Obra[]
-  usuarios  Usuario[]
+  obras    Obra[]
+  usuarios Usuario[]
 
   @@map("entes")
 }
@@ -190,8 +190,8 @@ model Contratista {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  obras       Obra[]
-  contratos   Contrato[]
+  obras     Obra[]
+  contratos Contrato[]
 
   @@map("contratistas")
 }
@@ -201,19 +201,19 @@ model FuenteFinanciamiento {
   nombre    String   @unique
   createdAt DateTime @default(now())
 
-  obras     Obra[]
+  obras Obra[]
 
   @@map("fuentes_financiamiento")
 }
 
 model Cargo {
-  id              String         @id @default(uuid())
-  nombre          String         @unique // Jefe de obra, Ingeniero residente, Obrero, Personal de limpieza...
-  nivelJerarquico Int            @default(0) // 1 = más alto en el organigrama
+  id              String   @id @default(uuid())
+  nombre          String   @unique // Jefe de obra, Ingeniero residente, Obrero, Personal de limpieza...
+  nivelJerarquico Int      @default(0) // 1 = más alto en el organigrama
   area            String?
-  createdAt       DateTime       @default(now())
+  createdAt       DateTime @default(now())
 
-  asignaciones    ObraPersonal[]
+  asignaciones ObraPersonal[]
 
   @@map("cargos")
 }
@@ -223,72 +223,75 @@ model Cargo {
 // ========================================
 
 model Obra {
-  id                     String            @id @default(uuid())
-  codigo                 String            @unique // OBR-2026-00123
-  slug                   String            @unique
-  nombre                 String
-  descripcion            String?
+  id          String  @id @default(uuid())
+  codigo      String  @unique // OBR-2026-00123
+  slug        String  @unique
+  nombre      String
+  descripcion String?
 
-  tipoObraId             String
-  estatusId              String
-  enteId                 String
-  contratistaId          String?
-  fuenteFinanciamientoId String?
+  tipoObraId              String
+  estatusId               String
+  enteId                  String
+  contratistaId           String?
+  fuenteFinanciamientoId  String?
+  partidaPresupuestariaId String?
 
-  estadoId               String
-  municipioId            String
-  parroquiaId            String?
-  direccion              String?
+  estadoId    String
+  municipioId String
+  parroquiaId String?
+  direccion   String?
 
   // Punto principal de la obra (hospital, escuela) — usado en los marcadores del mapa
-  ubicacion              Unsupported("geometry(Point, 4326)")?
+  ubicacion Unsupported("geometry(Point, 4326)")?
   // Trazado opcional para obras lineales o de área (carreteras, tuberías, urbanismos)
-  trazado                Unsupported("geometry(Geometry, 4326)")?
+  trazado   Unsupported("geometry(Geometry, 4326)")?
 
   // Decimal en vez de Float (a diferencia de tienda-web) para evitar errores de
   // redondeo en montos grandes de presupuesto público.
-  presupuestoAprobado    Decimal           @default(0) @db.Decimal(18, 2)
-  montoEjecutado         Decimal           @default(0) @db.Decimal(18, 2)
-  moneda                 String            @default("VES")
+  presupuestoAprobado Decimal @default(0) @db.Decimal(18, 2)
+  montoEjecutado      Decimal @default(0) @db.Decimal(18, 2)
+  moneda              String  @default("VES")
 
-  fechaAprobacion        DateTime?
-  fechaInicio            DateTime?
-  fechaFinEstimada       DateTime?
-  fechaFinReal           DateTime?
+  fechaAprobacion  DateTime?
+  fechaInicio      DateTime?
+  fechaFinEstimada DateTime?
+  fechaFinReal     DateTime?
 
-  avanceFisico           Float             @default(0) // 0-100
-  avanceFinanciero       Float             @default(0) // 0-100
+  avanceFisico     Float @default(0) // 0-100
+  avanceFinanciero Float @default(0) // 0-100
 
-  beneficiarios          Int?
-  capacidadDescripcion   String? // "120 camas", "800 estudiantes", "14 km"
+  beneficiarios        Int?
+  capacidadDescripcion String? // "120 camas", "800 estudiantes", "14 km"
 
-  destacada              Boolean           @default(false)
-  estadoPublicacion      EstadoPublicacion @default(BORRADOR)
+  destacada         Boolean           @default(false)
+  estadoPublicacion EstadoPublicacion @default(BORRADOR)
 
-  creadoPor              String?
-  actualizadoPor         String?
-  createdAt              DateTime          @default(now())
-  updatedAt              DateTime          @updatedAt
+  creadoPor      String?
+  actualizadoPor String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  tipoObra               TipoObra              @relation(fields: [tipoObraId], references: [id], onDelete: Restrict)
-  estatus                EstatusObra           @relation(fields: [estatusId], references: [id], onDelete: Restrict)
-  ente                   Ente                  @relation(fields: [enteId], references: [id], onDelete: Restrict)
-  contratista            Contratista?          @relation(fields: [contratistaId], references: [id], onDelete: SetNull)
-  fuenteFinanciamiento   FuenteFinanciamiento? @relation(fields: [fuenteFinanciamientoId], references: [id], onDelete: SetNull)
-  estado                 Estado                @relation(fields: [estadoId], references: [id], onDelete: Restrict)
-  municipio              Municipio             @relation(fields: [municipioId], references: [id], onDelete: Restrict)
-  parroquia              Parroquia?            @relation(fields: [parroquiaId], references: [id], onDelete: SetNull)
+  tipoObra              TipoObra               @relation(fields: [tipoObraId], references: [id], onDelete: Restrict)
+  estatus               EstatusObra            @relation(fields: [estatusId], references: [id], onDelete: Restrict)
+  ente                  Ente                   @relation(fields: [enteId], references: [id], onDelete: Restrict)
+  contratista           Contratista?           @relation(fields: [contratistaId], references: [id], onDelete: SetNull)
+  fuenteFinanciamiento  FuenteFinanciamiento?  @relation(fields: [fuenteFinanciamientoId], references: [id], onDelete: SetNull)
+  partidaPresupuestaria PartidaPresupuestaria? @relation(fields: [partidaPresupuestariaId], references: [id], onDelete: SetNull)
+  estado                Estado                 @relation(fields: [estadoId], references: [id], onDelete: Restrict)
+  municipio             Municipio              @relation(fields: [municipioId], references: [id], onDelete: Restrict)
+  parroquia             Parroquia?             @relation(fields: [parroquiaId], references: [id], onDelete: SetNull)
 
-  avances                Avance[]
-  hitos                  Hito[]
-  multimedia             Multimedia[]
-  personal               ObraPersonal[]
-  reportesCiudadanos     ReporteCiudadano[]
-  paralizaciones         PeriodoParalizacion[]
-  alertas                Alerta[]
-  denuncias              Denuncia[]
-  contrato               Contrato?
-  suscripciones          Suscripcion[]
+  avances              Avance[]
+  historialPresupuesto HistorialPresupuesto[]
+  hitos                Hito[]
+  multimedia           Multimedia[]
+  personal             ObraPersonal[]
+  reportesCiudadanos   ReporteCiudadano[]
+  paralizaciones       PeriodoParalizacion[]
+  alertas              Alerta[]
+  denuncias            Denuncia[]
+  contrato             Contrato?
+  suscripciones        Suscripcion[]
 
   @@index([estatusId])
   @@index([tipoObraId])
@@ -313,7 +316,7 @@ model PeriodoParalizacion {
   responsableRegistro String? // id del usuario que la registró (suelto, como en la bitácora)
   createdAt           DateTime           @default(now())
 
-  obra                Obra               @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  obra Obra @relation(fields: [obraId], references: [id], onDelete: Cascade)
 
   @@index([obraId])
   @@index([motivo])
@@ -334,7 +337,7 @@ model Alerta {
   resueltaEn  DateTime?
   createdAt   DateTime   @default(now())
 
-  obra        Obra       @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  obra Obra @relation(fields: [obraId], references: [id], onDelete: Cascade)
 
   @@index([obraId])
   @@index([tipo, resuelta])
@@ -382,8 +385,8 @@ model Denuncia {
   createdAt       DateTime       @default(now())
   actualizadoEn   DateTime       @updatedAt
 
-  obra            Obra?          @relation(fields: [obraId], references: [id], onDelete: SetNull)
-  eventos         EventoDenuncia[]
+  obra    Obra?            @relation(fields: [obraId], references: [id], onDelete: SetNull)
+  eventos EventoDenuncia[]
 
   @@index([estado])
   @@index([obraId])
@@ -393,13 +396,13 @@ model Denuncia {
 // Historial de estados de una denuncia; `nota` es un mensaje para el denunciante
 // (visible con su código de seguimiento).
 model EventoDenuncia {
-  id          String         @id @default(uuid())
-  denunciaId  String
-  estado      EstadoDenuncia
-  nota        String?
-  createdAt   DateTime       @default(now())
+  id         String         @id @default(uuid())
+  denunciaId String
+  estado     EstadoDenuncia
+  nota       String?
+  createdAt  DateTime       @default(now())
 
-  denuncia    Denuncia       @relation(fields: [denunciaId], references: [id], onDelete: Cascade)
+  denuncia Denuncia @relation(fields: [denunciaId], references: [id], onDelete: Cascade)
 
   @@index([denunciaId])
   @@map("eventos_denuncia")
@@ -424,9 +427,9 @@ model Contrato {
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
 
-  obra               Obra                  @relation(fields: [obraId], references: [id], onDelete: Cascade)
-  contratista        Contratista           @relation(fields: [contratistaId], references: [id], onDelete: Restrict)
-  adendas            ContratoAdenda[]
+  obra        Obra             @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  contratista Contratista      @relation(fields: [contratistaId], references: [id], onDelete: Restrict)
+  adendas     ContratoAdenda[]
 
   @@index([contratistaId])
   @@map("contratos")
@@ -444,7 +447,7 @@ model ContratoAdenda {
   registradoPor   String?
   fecha           DateTime @default(now())
 
-  contrato        Contrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  contrato Contrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
 
   @@unique([contratoId, numero])
   @@map("contrato_adendas")
@@ -462,8 +465,8 @@ model Avance {
   aprobadoEn       DateTime?
   createdAt        DateTime  @default(now())
 
-  obra             Obra        @relation(fields: [obraId], references: [id], onDelete: Cascade)
-  multimedia       Multimedia[]
+  obra       Obra         @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  multimedia Multimedia[]
 
   @@index([obraId, fecha(sort: Desc)])
   @@map("avances")
@@ -479,7 +482,7 @@ model Hito {
   orden            Int       @default(0)
   createdAt        DateTime  @default(now())
 
-  obra             Obra      @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  obra Obra @relation(fields: [obraId], references: [id], onDelete: Cascade)
 
   @@index([obraId])
   @@map("hitos")
@@ -501,8 +504,8 @@ model Multimedia {
   longitudExif Float?
   createdAt    DateTime         @default(now())
 
-  obra         Obra             @relation(fields: [obraId], references: [id], onDelete: Cascade)
-  avance       Avance?          @relation(fields: [avanceId], references: [id], onDelete: SetNull)
+  obra   Obra    @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  avance Avance? @relation(fields: [avanceId], references: [id], onDelete: SetNull)
 
   @@index([obraId])
   @@index([avanceId])
@@ -529,7 +532,7 @@ model Persona {
   createdAt                 DateTime  @default(now())
   updatedAt                 DateTime  @updatedAt
 
-  asignaciones              ObraPersonal[]
+  asignaciones ObraPersonal[]
 
   @@index([apellidos, nombres])
   @@map("personas")
@@ -548,11 +551,11 @@ model ObraPersonal {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  obra           Obra           @relation(fields: [obraId], references: [id], onDelete: Cascade)
-  persona        Persona        @relation(fields: [personaId], references: [id], onDelete: Cascade)
-  cargo          Cargo          @relation(fields: [cargoId], references: [id], onDelete: Restrict)
-  supervisor     ObraPersonal?  @relation("Jerarquia", fields: [supervisorId], references: [id], onDelete: SetNull)
-  subordinados   ObraPersonal[] @relation("Jerarquia")
+  obra         Obra           @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  persona      Persona        @relation(fields: [personaId], references: [id], onDelete: Cascade)
+  cargo        Cargo          @relation(fields: [cargoId], references: [id], onDelete: Restrict)
+  supervisor   ObraPersonal?  @relation("Jerarquia", fields: [supervisorId], references: [id], onDelete: SetNull)
+  subordinados ObraPersonal[] @relation("Jerarquia")
 
   @@unique([obraId, personaId, cargoId])
   @@index([obraId])
@@ -578,8 +581,8 @@ model Usuario {
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
 
-  ente                Ente?      @relation(fields: [enteId], references: [id], onDelete: SetNull)
-  estadoRestriccion   Estado?    @relation(fields: [estadoRestriccionId], references: [id], onDelete: SetNull)
+  ente              Ente?   @relation(fields: [enteId], references: [id], onDelete: SetNull)
+  estadoRestriccion Estado? @relation(fields: [estadoRestriccionId], references: [id], onDelete: SetNull)
 
   @@index([enteId])
   @@index([estadoRestriccionId])
@@ -615,7 +618,7 @@ model ReporteCiudadano {
   moderadoEn       DateTime?
   createdAt        DateTime         @default(now())
 
-  obra             Obra             @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  obra Obra @relation(fields: [obraId], references: [id], onDelete: Cascade)
 
   @@index([obraId])
   @@index([estadoModeracion])
@@ -630,9 +633,44 @@ model Suscripcion {
   tokenConfirmacion String?  @unique
   createdAt         DateTime @default(now())
 
-  obra              Obra     @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  obra Obra @relation(fields: [obraId], references: [id], onDelete: Cascade)
 
   @@unique([obraId, correo])
   @@index([obraId])
   @@map("suscripciones")
+}
+
+// ========================================
+// PRESUPUESTO POR PARTIDAS (MODULOS_AVANZADOS.md, módulo 10)
+// ========================================
+
+// Código presupuestario oficial (Ley de Presupuesto u ordenanza) que respalda la obra.
+model PartidaPresupuestaria {
+  id              String   @id @default(uuid())
+  codigo          String   @unique // ej. "301-01-02-15"
+  descripcion     String
+  ejercicioFiscal Int // año
+  createdAt       DateTime @default(now())
+
+  obras Obra[]
+
+  @@map("partidas_presupuestarias")
+}
+
+// Cada modificación del presupuesto aprobado de una obra, con su justificación.
+model HistorialPresupuesto {
+  id            String   @id @default(uuid())
+  obraId        String
+  montoAnterior Decimal  @db.Decimal(18, 2)
+  montoNuevo    Decimal  @db.Decimal(18, 2)
+  moneda        String
+  motivo        String
+  documentoUrl  String?
+  registradoPor String? // id del usuario (suelto, como en la bitácora)
+  fecha         DateTime @default(now())
+
+  obra Obra @relation(fields: [obraId], references: [id], onDelete: Cascade)
+
+  @@index([obraId])
+  @@map("historial_presupuesto")
 }

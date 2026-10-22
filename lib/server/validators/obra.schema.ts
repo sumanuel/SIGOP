@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { urlHttp } from '@/lib/server/validators/url';
 
 // Reglas de validación para crear/actualizar una obra desde el panel admin.
 // Los campos de geolocalización (lat/lng) se validan aquí pero se escriben
@@ -50,6 +51,9 @@ export const crearObraSchema = z.object({
   beneficiarios: z.number().int().nonnegative().optional(),
   capacidadDescripcion: z.string().max(200).optional(),
   destacada: z.boolean().default(false),
+
+  // Partida del presupuesto oficial que respalda la obra (módulo 10).
+  partidaPresupuestariaId: z.string().uuid().nullable().optional(),
 });
 
 export type CrearObraInput = z.infer<typeof crearObraSchema>;
@@ -81,6 +85,10 @@ export const actualizarObraSchema = crearObraSchema.partial().extend({
   montoEjecutado: z.number().nonnegative().optional(),
   moneda: z.string().max(10).optional(),
   destacada: z.boolean().optional(),
+  // Obligatorios cuando cambia `presupuestoAprobado` (se valida en el servicio, que
+  // compara contra lo guardado): quedan en el historial público del presupuesto.
+  motivoCambioPresupuesto: z.string().trim().min(10, 'Explica el motivo del cambio (mínimo 10 caracteres).').max(500).optional(),
+  documentoCambioPresupuestoUrl: urlHttp().max(500).optional(),
   // `null` explícito permite "quitar" el trazado (la obra dejó de ser lineal).
   trazado: z
     .array(z.tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)]))

@@ -139,6 +139,8 @@ const INCLUDE_DETALLE = {
   ente: true,
   contratista: true,
   fuenteFinanciamiento: true,
+  partidaPresupuestaria: true,
+  historialPresupuesto: { orderBy: { fecha: 'desc' as const } },
   estado: true,
   municipio: true,
   parroquia: true,
@@ -263,6 +265,7 @@ function sinDatosPrivados<T extends {
   paralizaciones: { responsableRegistro: string | null }[];
   multimedia: { latitudExif: number | null; longitudExif: number | null }[];
   contrato: { creadoPor: string | null } | null;
+  historialPresupuesto: { registradoPor: string | null }[];
   creadoPor: string | null;
   actualizadoPor: string | null;
 }>(obra: T): T {
@@ -275,6 +278,7 @@ function sinDatosPrivados<T extends {
     paralizaciones: obra.paralizaciones.map((p) => ({ ...p, responsableRegistro: null })),
     multimedia: obra.multimedia.map((m) => ({ ...m, latitudExif: null, longitudExif: null })),
     contrato: obra.contrato && { ...obra.contrato, creadoPor: null },
+    historialPresupuesto: obra.historialPresupuesto.map((h) => ({ ...h, registradoPor: null })),
   };
 }
 
@@ -330,6 +334,7 @@ export async function crearObra(data: CrearObraInput, ctx: CrearObraContext) {
       beneficiarios: data.beneficiarios,
       capacidadDescripcion: data.capacidadDescripcion,
       destacada: data.destacada,
+      partidaPresupuestariaId: data.partidaPresupuestariaId ?? null,
       creadoPor: ctx.usuarioId,
       actualizadoPor: ctx.usuarioId,
       estadoPublicacion: 'BORRADOR',
@@ -357,6 +362,15 @@ export async function crearObra(data: CrearObraInput, ctx: CrearObraContext) {
   return obra;
 }
 
+/** Regla de negocio al editar una obra (p. ej. falta el motivo del cambio de presupuesto); el Route Handler la traduce a su status. */
+export class ObraError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
 interface ActualizarObraContext {
   usuarioId: string;
   rol: string;
@@ -380,6 +394,7 @@ async function editaDatosSensibles(
 ) {
   if (campos.nombre !== undefined && campos.nombre !== antes.nombre) return true;
   if (campos.estatusId !== undefined && campos.estatusId !== antes.estatusId) return true;
+  if (campos.partidaPresupuestariaId !== undefined && campos.partidaPresupuestariaId !== antes.partidaPresupuestariaId) return true;
   if (campos.moneda !== undefined && campos.moneda !== antes.moneda) return true;
   if (campos.presupuestoAprobado !== undefined && campos.presupuestoAprobado !== Number(antes.presupuestoAprobado)) return true;
   if (campos.montoEjecutado !== undefined && campos.montoEjecutado !== Number(antes.montoEjecutado)) return true;
@@ -401,7 +416,18 @@ export async function actualizarObra(id: string, data: ActualizarObraInput, ctx:
   const obraAntes = await prisma.obra.findUnique({ where: { id } });
   if (!obraAntes) return null;
 
-  const { lat, lng, trazado, trazadoTipo, ...campos } = data;
+  const { lat, lng, trazado, trazadoTipo, motivoCambioPresupuesto, documentoCambioPresupuestoUrl, ...campos } = data;
+
+  // Cambiar el presupuesto aprobado exige justificarlo: queda en el historial público.
+  const cambioPresupuesto =
+    campos.presupuestoAprobado !== undefined && campos.presupuestoAprobado !== Number(obraAntes.presupuestoAprobado);
+  if (cambioPresupuesto && !motivoCambioPresupuesto) {
+    throw new ObraError(400, 'Cambiar el presupuesto aprobado exige indicar el motivo del cambio.');
+  }
+  if (campos.partidaPresupuestariaId) {
+    const partida = await prisma.partidaPresupuestaria.findUnique({ where: { id: campos.partidaPresupuestariaId }, select: { id: true } });
+    if (!partida) throw new ObraError(400, 'La partida presupuestaria seleccionada no existe.');
+  }
 
   if (campos.estatusId) {
     await validarCambioDeEstatus(id, campos.estatusId, obraAntes.estatusId, ctx.usuarioId);
@@ -414,17 +440,33 @@ export async function actualizarObra(id: string, data: ActualizarObraInput, ctx:
     !ROLES_SIN_REVISION.includes(ctx.rol) &&
     (await editaDatosSensibles(obraAntes, campos, { lat, lng, trazado }));
 
-  const obra = await prisma.obra.update({
-    where: { id },
-    data: {
-      ...campos,
-      ...(devueltaARevision ? { estadoPublicacion: 'EN_REVISION' as const } : {}),
-      fechaAprobacion: campos.fechaAprobacion ? new Date(campos.fechaAprobacion) : undefined,
-      fechaInicio: campos.fechaInicio ? new Date(campos.fechaInicio) : undefined,
-      fechaFinEstimada: campos.fechaFinEstimada ? new Date(campos.fechaFinEstimada) : undefined,
-      fechaFinReal: campos.fechaFinReal ? new Date(campos.fechaFinReal) : undefined,
-      actualizadoPor: ctx.usuarioId,
-    },
+  const obra = await prisma.$transaction(async (tx) => {
+    const actualizada = await tx.obra.update({
+      where: { id },
+      data: {
+        ...campos,
+        ...(devueltaARevision ? { estadoPublicacion: 'EN_REVISION' as const } : {}),
+        fechaAprobacion: campos.fechaAprobacion ? new Date(campos.fechaAprobacion) : undefined,
+        fechaInicio: campos.fechaInicio ? new Date(campos.fechaInicio) : undefined,
+        fechaFinEstimada: campos.fechaFinEstimada ? new Date(campos.fechaFinEstimada) : undefined,
+        fechaFinReal: campos.fechaFinReal ? new Date(campos.fechaFinReal) : undefined,
+        actualizadoPor: ctx.usuarioId,
+      },
+    });
+    if (cambioPresupuesto) {
+      await tx.historialPresupuesto.create({
+        data: {
+          obraId: id,
+          montoAnterior: obraAntes.presupuestoAprobado,
+          montoNuevo: actualizada.presupuestoAprobado,
+          moneda: actualizada.moneda,
+          motivo: motivoCambioPresupuesto as string,
+          documentoUrl: documentoCambioPresupuestoUrl,
+          registradoPor: ctx.usuarioId,
+        },
+      });
+    }
+    return actualizada;
   });
 
   if (lat !== undefined && lng !== undefined) {
