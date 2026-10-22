@@ -283,6 +283,7 @@ model Obra {
 
   avances              Avance[]
   historialPresupuesto HistorialPresupuesto[]
+  garantia             GarantiaObra?
   hitos                Hito[]
   multimedia           Multimedia[]
   personal             ObraPersonal[]
@@ -673,4 +674,48 @@ model HistorialPresupuesto {
 
   @@index([obraId])
   @@map("historial_presupuesto")
+}
+
+// ========================================
+// MANTENIMIENTO POST-ENTREGA (MODULOS_AVANZADOS.md, módulo 8)
+// ========================================
+
+// Garantía de una obra entregada y las intervenciones de mantenimiento posteriores:
+// la obra sigue "viva" en el sistema después de la foto de inauguración.
+model GarantiaObra {
+  id                  String   @id @default(uuid())
+  obraId              String   @unique
+  fechaInicioGarantia DateTime
+  fechaFinGarantia    DateTime
+  cubreEstructura     Boolean  @default(true)
+  cubreInstalaciones  Boolean  @default(true)
+  observaciones       String?
+  registradoPor       String? // id del usuario (suelto, como en la bitácora)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  obra           Obra                        @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  intervenciones IntervencionMantenimiento[]
+
+  @@map("garantias_obra")
+}
+
+model IntervencionMantenimiento {
+  id             String   @id @default(uuid())
+  garantiaId     String
+  fecha          DateTime @default(now())
+  tipo           String // CORRECTIVO | PREVENTIVO
+  descripcion    String
+  costo          Decimal? @db.Decimal(18, 2)
+  moneda         String   @default("VES")
+  realizadoPor   String? // empresa o dependencia, no una persona
+  fotoAntesUrl   String?
+  fotoDespuesUrl String?
+  registradoPor  String?
+  createdAt      DateTime @default(now())
+
+  garantia GarantiaObra @relation(fields: [garantiaId], references: [id], onDelete: Cascade)
+
+  @@index([garantiaId])
+  @@map("intervenciones_mantenimiento")
 }

@@ -14,6 +14,7 @@ import { ObraParalizaciones } from '@/components/obra/obra-paralizaciones';
 import { ObraIntegridad } from '@/components/obra/obra-integridad';
 import { ObraContratacion } from '@/components/obra/obra-contratacion';
 import { ObraPresupuesto } from '@/components/obra/obra-presupuesto';
+import { ObraMantenimiento } from '@/components/obra/obra-mantenimiento';
 import { ObraSuscripcion } from '@/components/obra/obra-suscripcion';
 import type { ObraMapa } from '@/lib/types/obra';
 import { calcularAtrasoDias } from '@/lib/atraso';
@@ -142,6 +143,8 @@ export default async function ObraFichaPage({ params }: PageProps) {
           />
 
           <ObraIntegridad slug={obra.slug} />
+
+          <ObraMantenimiento garantia={obra.garantia} />
 
           <ObraParalizaciones periodos={obra.paralizaciones} />
 

@@ -71,6 +71,12 @@ export default async function EditarObraPage({ params }: PageProps) {
           >
             Contrato
           </Link>
+          <Link
+            href={`/admin/obras/${obra.id}/mantenimiento`}
+            className="rounded-md border border-border px-3 py-2 text-sm hover:bg-muted"
+          >
+            Mantenimiento
+          </Link>
         </div>
       </div>
 

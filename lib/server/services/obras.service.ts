@@ -140,6 +140,7 @@ const INCLUDE_DETALLE = {
   contratista: true,
   fuenteFinanciamiento: true,
   partidaPresupuestaria: true,
+  garantia: { include: { intervenciones: { orderBy: { fecha: 'desc' as const } } } },
   historialPresupuesto: { orderBy: { fecha: 'desc' as const } },
   estado: true,
   municipio: true,
@@ -266,6 +267,7 @@ function sinDatosPrivados<T extends {
   multimedia: { latitudExif: number | null; longitudExif: number | null }[];
   contrato: { creadoPor: string | null } | null;
   historialPresupuesto: { registradoPor: string | null }[];
+  garantia: { registradoPor: string | null; intervenciones: { registradoPor: string | null }[] } | null;
   creadoPor: string | null;
   actualizadoPor: string | null;
 }>(obra: T): T {
@@ -279,6 +281,11 @@ function sinDatosPrivados<T extends {
     multimedia: obra.multimedia.map((m) => ({ ...m, latitudExif: null, longitudExif: null })),
     contrato: obra.contrato && { ...obra.contrato, creadoPor: null },
     historialPresupuesto: obra.historialPresupuesto.map((h) => ({ ...h, registradoPor: null })),
+    garantia: obra.garantia && {
+      ...obra.garantia,
+      registradoPor: null,
+      intervenciones: obra.garantia.intervenciones.map((i) => ({ ...i, registradoPor: null })),
+    },
   };
 }
 
