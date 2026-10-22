@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/server/prisma';
 import { calcularAtrasoDias } from '@/lib/atraso';
+import { nombresDeUsuarios } from '@/lib/server/services/avances.service';
 
 export interface ObraConAtraso {
   id: string;
@@ -124,11 +125,7 @@ export async function obtenerDashboardInterno(): Promise<DashboardInterno> {
   // `registradoPor` es un usuarioId suelto (no una relación de Prisma, mismo
   // motivo que Auditoria.usuarioId — ver auditoria.service.ts): se resuelve
   // el nombre aparte en vez de un `include`.
-  const usuarioIds = [...new Set(avancesRecientes.map((a) => a.registradoPor).filter((id): id is string => Boolean(id)))];
-  const usuarios = usuarioIds.length
-    ? await prisma.usuario.findMany({ where: { id: { in: usuarioIds } }, select: { id: true, nombre: true } })
-    : [];
-  const usuarioPorId = new Map(usuarios.map((u) => [u.id, u]));
+  const usuarioPorId = await nombresDeUsuarios(avancesRecientes.map((a) => a.registradoPor));
 
   const actualizacionesRecientes: ActualizacionReciente[] = avancesRecientes.map((a) => ({
     id: a.id,

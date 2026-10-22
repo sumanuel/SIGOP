@@ -48,15 +48,26 @@ export async function autenticarUsuario(email: string, password: string) {
   return { requiere2fa: false as const, usuario, accessToken, refreshToken };
 }
 
-/** Verifica el refresh token y emite un nuevo par (rotación de refresh token). */
-export function renovarSesion(refreshToken: string) {
+/**
+ * Verifica el refresh token y emite un nuevo par (rotación de refresh token).
+ * Consulta la base: una cuenta desactivada o eliminada ya no renueva, y el rol
+ * y el ente salen del registro actual (no del token viejo), así que una baja o
+ * un cambio de rol surte efecto en cuanto vence el access token (15 min).
+ */
+export async function renovarSesion(refreshToken: string) {
   const payload = verifyRefreshToken(refreshToken); // lanza si es inválido/expiró
 
+  const usuario = await prisma.usuario.findUnique({
+    where: { id: payload.sub },
+    select: { id: true, email: true, rol: true, enteId: true, activo: true },
+  });
+  if (!usuario || !usuario.activo) throw new Error('Cuenta inactiva');
+
   const nuevoPayload: JwtPayload = {
-    sub: payload.sub,
-    email: payload.email,
-    rol: payload.rol,
-    enteId: payload.enteId,
+    sub: usuario.id,
+    email: usuario.email,
+    rol: usuario.rol,
+    enteId: usuario.enteId,
   };
 
   return {

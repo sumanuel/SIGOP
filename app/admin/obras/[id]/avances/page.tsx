@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { prisma } from '@/lib/server/prisma';
-import { listarAvancesDeObra } from '@/lib/server/services/avances.service';
+import { listarAvancesDeObra, nombresDeUsuarios } from '@/lib/server/services/avances.service';
 import { GestionAvances } from '@/components/admin/gestion-avances';
 
 interface PageProps {
@@ -16,6 +16,7 @@ export default async function AvancesDeObraPage({ params }: PageProps) {
   if (!obra) notFound();
 
   const avances = await listarAvancesDeObra(id);
+  const autores = await nombresDeUsuarios(avances.map((a) => a.registradoPor));
 
   return (
     <main className="mx-auto max-w-2xl p-8">
@@ -39,7 +40,7 @@ export default async function AvancesDeObraPage({ params }: PageProps) {
             avanceFisico: a.avanceFisico,
             avanceFinanciero: a.avanceFinanciero,
             comentario: a.comentario,
-            registradoPor: a.registradoPor,
+            registradoPor: a.registradoPor ? (autores.get(a.registradoPor)?.nombre ?? a.registradoPor) : null,
           }))}
         />
       </div>

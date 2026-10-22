@@ -13,5 +13,9 @@ export const crearAsignacionSchema = z.object({
 
 export type CrearAsignacionInput = z.infer<typeof crearAsignacionSchema>;
 
-export const actualizarAsignacionSchema = crearAsignacionSchema.partial();
+// Zod 4: `.partial()` conserva los `.default()`, así que un PUT sin el campo
+// volvería a publicar a quien estaba oculto. Se redeclara sin valor por defecto.
+export const actualizarAsignacionSchema = crearAsignacionSchema
+  .partial()
+  .extend({ visiblePublico: z.boolean().optional() });
 export type ActualizarAsignacionInput = z.infer<typeof actualizarAsignacionSchema>;

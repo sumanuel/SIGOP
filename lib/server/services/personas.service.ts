@@ -46,12 +46,17 @@ export async function actualizarPersona(id: string, data: ActualizarPersonaInput
 
   // Si se activa el consentimiento por primera vez, se registra la fecha
   // (si ya estaba activo y se vuelve a guardar, no se pisa la fecha original).
+  // Si se revoca, la fecha se limpia: no debe quedar constancia de un consentimiento vigente.
   const fechaConsentimiento =
-    data.consentimientoPublicacion && !antes.consentimientoPublicacion ? new Date() : undefined;
+    data.consentimientoPublicacion === false
+      ? null
+      : data.consentimientoPublicacion && !antes.consentimientoPublicacion
+        ? new Date()
+        : undefined;
 
   const persona = await prisma.persona.update({
     where: { id },
-    data: { ...data, ...(fechaConsentimiento ? { fechaConsentimiento } : {}) },
+    data: { ...data, ...(fechaConsentimiento !== undefined ? { fechaConsentimiento } : {}) },
   });
 
   await registrarAuditoria({

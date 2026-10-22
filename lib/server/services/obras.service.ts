@@ -239,13 +239,41 @@ export async function obtenerObraDetalle(idOrSlug: string, opts: ObtenerObraDeta
       };
     });
 
-  return {
+  const detalle = {
     ...obra,
     personal,
     lat: coords?.[1] ?? null,
     lng: coords?.[0] ?? null,
     trazado,
     trazadoTipo,
+  };
+  return opts.soloPublicado ? sinDatosPrivados(detalle) : detalle;
+}
+
+/**
+ * Proyección pública: la ficha y `GET /api/obras/[id]` salen del mismo objeto
+ * que usa el panel, así que aquí se vacían los datos que nunca deben publicarse
+ * (contacto del contratista, autores internos, GPS del EXIF). Se anulan en vez
+ * de borrarlos para conservar la forma del tipo.
+ */
+function sinDatosPrivados<T extends {
+  contratista: { contacto: string | null; telefono: string | null; email: string | null } | null;
+  avances: { registradoPor: string | null }[];
+  paralizaciones: { responsableRegistro: string | null }[];
+  multimedia: { latitudExif: number | null; longitudExif: number | null }[];
+  contrato: { creadoPor: string | null } | null;
+  creadoPor: string | null;
+  actualizadoPor: string | null;
+}>(obra: T): T {
+  return {
+    ...obra,
+    creadoPor: null,
+    actualizadoPor: null,
+    contratista: obra.contratista && { ...obra.contratista, contacto: null, telefono: null, email: null },
+    avances: obra.avances.map((a) => ({ ...a, registradoPor: null })),
+    paralizaciones: obra.paralizaciones.map((p) => ({ ...p, responsableRegistro: null })),
+    multimedia: obra.multimedia.map((m) => ({ ...m, latitudExif: null, longitudExif: null })),
+    contrato: obra.contrato && { ...obra.contrato, creadoPor: null },
   };
 }
 

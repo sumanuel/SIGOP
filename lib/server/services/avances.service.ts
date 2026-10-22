@@ -13,6 +13,26 @@ export async function listarAvancesDeObra(obraId: string) {
 }
 
 /**
+ * `registradoPor` guarda el id del usuario; los avances anteriores a este
+ * criterio guardaron su correo. Resuelve ambos a un nombre, para el panel
+ * (nunca debe llegar a una respuesta pública).
+ */
+export async function nombresDeUsuarios(referencias: (string | null)[]) {
+  const refs = [...new Set(referencias.filter((r): r is string => Boolean(r)))];
+  const mapa = new Map<string, { id: string; nombre: string }>();
+  if (!refs.length) return mapa;
+  const usuarios = await prisma.usuario.findMany({
+    where: { OR: [{ id: { in: refs } }, { email: { in: refs } }] },
+    select: { id: true, nombre: true, email: true },
+  });
+  for (const u of usuarios) {
+    mapa.set(u.id, { id: u.id, nombre: u.nombre });
+    mapa.set(u.email, { id: u.id, nombre: u.nombre });
+  }
+  return mapa;
+}
+
+/**
  * Registra un nuevo avance en el historial (nunca sobrescribe los
  * anteriores — PLAN_PROYECTO.md sección 3.2) y sincroniza el
  * `avanceFisico`/`avanceFinanciero` "actual" de la obra con este último
@@ -37,7 +57,7 @@ export async function crearAvance(
         avanceFinanciero: data.avanceFinanciero,
         comentario: data.comentario,
         fecha: data.fecha ? new Date(data.fecha) : undefined,
-        registradoPor: ctx.email,
+        registradoPor: ctx.usuarioId,
       },
     });
     await tx.obra.update({
@@ -45,7 +65,7 @@ export async function crearAvance(
       data: {
         avanceFisico: data.avanceFisico,
         avanceFinanciero: data.avanceFinanciero,
-        actualizadoPor: ctx.email,
+        actualizadoPor: ctx.usuarioId,
       },
     });
     await registrarIntegridad(tx, {

@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const tokens = renovarSesion(refreshToken);
+    const tokens = await renovarSesion(refreshToken);
     const response = NextResponse.json({ ok: true });
     setAuthCookies(response, tokens);
     return response;
