@@ -8,7 +8,7 @@ import {
   ParalizacionError,
 } from '@/lib/server/services/paralizaciones.service';
 
-const ROLES_GESTION = ['SUPER_ADMIN', 'ADMIN_ENTE', 'EDITOR_OBRA'];
+const ROLES_GESTION = ['SUPER_ADMIN', 'ADMIN_ENTE', 'EDITOR_OBRA', 'APROBADOR'];
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const { id } = await params;
 
     const datos = cambioParalizacionSchema.parse(await request.json());
-    const periodo = await cambiarParalizacion(id, datos, usuario.sub);
+    const periodo = await cambiarParalizacion(id, datos, usuario.sub, usuario.rol);
     if (!periodo) return NextResponse.json({ error: 'Obra no encontrada' }, { status: 404 });
 
     return NextResponse.json({ periodo }, { status: datos.accion === 'PARALIZAR' ? 201 : 200 });

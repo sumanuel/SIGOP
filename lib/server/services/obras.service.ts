@@ -142,7 +142,8 @@ const INCLUDE_DETALLE = {
   estado: true,
   municipio: true,
   parroquia: true,
-  avances: { orderBy: { fecha: 'desc' as const } },
+  // Solo avances aprobados: los pendientes se gestionan en el panel.
+  avances: { where: { aprobadoEn: { not: null } }, orderBy: { fecha: 'desc' as const } },
   paralizaciones: { orderBy: { fechaInicio: 'desc' as const } },
   contrato: { include: { adendas: { orderBy: { numero: 'asc' as const } } } },
   hitos: { orderBy: { orden: 'asc' as const } },
@@ -358,6 +359,42 @@ export async function crearObra(data: CrearObraInput, ctx: CrearObraContext) {
 
 interface ActualizarObraContext {
   usuarioId: string;
+  rol: string;
+}
+
+/** Roles cuyas ediciones en una obra publicada no necesitan nueva revisión. */
+const ROLES_SIN_REVISION = ['SUPER_ADMIN', 'ADMIN_ENTE', 'APROBADOR'];
+
+const mismaFecha = (nueva: string | undefined, antes: Date | null) =>
+  nueva === undefined || (antes !== null && new Date(nueva).getTime() === antes.getTime());
+
+/**
+ * ¿Toca la edición datos que el público usa para juzgar la obra (nombre,
+ * dinero, plazos, ubicación)? Se compara contra lo guardado: el formulario
+ * reenvía todos los campos y guardar sin cambiar nada no debe despublicar.
+ */
+async function editaDatosSensibles(
+  antes: NonNullable<Awaited<ReturnType<typeof prisma.obra.findUnique>>>,
+  campos: Omit<ActualizarObraInput, 'lat' | 'lng' | 'trazado' | 'trazadoTipo'>,
+  ubicacion: { lat?: number; lng?: number; trazado?: unknown }
+) {
+  if (campos.nombre !== undefined && campos.nombre !== antes.nombre) return true;
+  if (campos.estatusId !== undefined && campos.estatusId !== antes.estatusId) return true;
+  if (campos.moneda !== undefined && campos.moneda !== antes.moneda) return true;
+  if (campos.presupuestoAprobado !== undefined && campos.presupuestoAprobado !== Number(antes.presupuestoAprobado)) return true;
+  if (campos.montoEjecutado !== undefined && campos.montoEjecutado !== Number(antes.montoEjecutado)) return true;
+  if (!mismaFecha(campos.fechaAprobacion, antes.fechaAprobacion)) return true;
+  if (!mismaFecha(campos.fechaInicio, antes.fechaInicio)) return true;
+  if (!mismaFecha(campos.fechaFinEstimada, antes.fechaFinEstimada)) return true;
+  if (!mismaFecha(campos.fechaFinReal, antes.fechaFinReal)) return true;
+  if (ubicacion.trazado !== undefined) return true;
+  if (ubicacion.lat !== undefined && ubicacion.lng !== undefined) {
+    const [fila] = await prisma.$queryRaw<{ lat: number | null; lng: number | null }[]>`
+      SELECT ST_Y(ubicacion) AS lat, ST_X(ubicacion) AS lng FROM obras WHERE id = ${antes.id}
+    `;
+    if (!fila || Math.abs((fila.lat ?? 0) - ubicacion.lat) > 1e-6 || Math.abs((fila.lng ?? 0) - ubicacion.lng) > 1e-6) return true;
+  }
+  return false;
 }
 
 export async function actualizarObra(id: string, data: ActualizarObraInput, ctx: ActualizarObraContext) {
@@ -370,10 +407,18 @@ export async function actualizarObra(id: string, data: ActualizarObraInput, ctx:
     await validarCambioDeEstatus(id, campos.estatusId, obraAntes.estatusId, ctx.usuarioId);
   }
 
+  // Un editor que cambia datos sensibles de una obra ya publicada la devuelve
+  // a revisión: nada llega al portal sin que un aprobador lo vea.
+  const devueltaARevision =
+    obraAntes.estadoPublicacion === 'PUBLICADO' &&
+    !ROLES_SIN_REVISION.includes(ctx.rol) &&
+    (await editaDatosSensibles(obraAntes, campos, { lat, lng, trazado }));
+
   const obra = await prisma.obra.update({
     where: { id },
     data: {
       ...campos,
+      ...(devueltaARevision ? { estadoPublicacion: 'EN_REVISION' as const } : {}),
       fechaAprobacion: campos.fechaAprobacion ? new Date(campos.fechaAprobacion) : undefined,
       fechaInicio: campos.fechaInicio ? new Date(campos.fechaInicio) : undefined,
       fechaFinEstimada: campos.fechaFinEstimada ? new Date(campos.fechaFinEstimada) : undefined,
@@ -405,10 +450,10 @@ export async function actualizarObra(id: string, data: ActualizarObraInput, ctx:
     entidad: 'Obra',
     entidadId: obra.id,
     datosAntes: obraAntes,
-    datosDespues: obra,
+    datosDespues: devueltaARevision ? { ...obra, motivo: 'devuelta a revisión por editar datos sensibles' } : obra,
   });
 
-  return obra;
+  return { ...obra, devueltaARevision };
 }
 
 /** Lanzado cuando la acción pedida no aplica al estado actual de la obra o

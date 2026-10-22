@@ -46,7 +46,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const errorTrazado = errorDeTrazado(datos);
     if (errorTrazado) return NextResponse.json({ error: errorTrazado }, { status: 400 });
 
-    const obra = await actualizarObra(id, datos, { usuarioId: usuario.sub });
+    const obra = await actualizarObra(id, datos, { usuarioId: usuario.sub, rol: usuario.rol });
     if (!obra) {
       return NextResponse.json({ error: 'Obra no encontrada' }, { status: 404 });
     }

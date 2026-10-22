@@ -52,7 +52,7 @@ async function ejecutarEvaluacion(): Promise<ResultadoEvaluacion> {
       fechaInicio: true,
       fechaFinEstimada: true,
       estatus: { select: { nombre: true } },
-      avances: { orderBy: { fecha: 'desc' }, take: 1, select: { fecha: true } },
+      avances: { where: { aprobadoEn: { not: null } }, orderBy: { fecha: 'desc' }, take: 1, select: { fecha: true } },
       paralizaciones: { where: { fechaReactivacion: null }, take: 1, select: { fechaInicio: true } },
     },
   });

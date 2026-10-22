@@ -66,9 +66,15 @@ export async function obtenerEstadoParalizacion(obraId: string) {
   };
 }
 
-export async function cambiarParalizacion(obraId: string, data: CambioParalizacionInput, usuarioId: string) {
+export async function cambiarParalizacion(obraId: string, data: CambioParalizacionInput, usuarioId: string, rol: string) {
   const obra = await prisma.obra.findUnique({ where: { id: obraId } });
   if (!obra) return null;
+
+  // Paralizar o reactivar una obra publicada cambia lo que ve el público y avisa
+  // a los suscriptores: un editor debe pedírselo a un aprobador.
+  if (obra.estadoPublicacion === 'PUBLICADO' && rol === 'EDITOR_OBRA') {
+    throw new ParalizacionError(403, 'Esta obra está publicada: pídele a un aprobador que registre la paralización o la reactivación.');
+  }
 
   const ahora = new Date();
   const abierto = await prisma.periodoParalizacion.findFirst({ where: { obraId, fechaReactivacion: null } });

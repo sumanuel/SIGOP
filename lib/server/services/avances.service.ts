@@ -32,20 +32,37 @@ export async function nombresDeUsuarios(referencias: (string | null)[]) {
   return mapa;
 }
 
+/** Roles que pueden aprobar lo que registra un editor (los mismos que aprueban obras). */
+export const ROLES_APROBADORES = ['SUPER_ADMIN', 'ADMIN_ENTE', 'APROBADOR'];
+
+export class AvanceError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
 /**
  * Registra un nuevo avance en el historial (nunca sobrescribe los
- * anteriores — PLAN_PROYECTO.md sección 3.2) y sincroniza el
- * `avanceFisico`/`avanceFinanciero` "actual" de la obra con este último
- * reporte, que es lo que se muestra como cifra principal en la ficha
- * pública y en el círculo de progreso.
+ * anteriores — PLAN_PROYECTO.md sección 3.2).
+ *
+ * En una obra PUBLICADA, el avance de un editor queda PENDIENTE (`aprobadoEn`
+ * nulo): no cambia la cifra pública ni avisa a los suscriptores hasta que un
+ * aprobador lo apruebe. En una obra aún no publicada, o si quien lo registra
+ * ya es aprobador, se aprueba al instante y sincroniza el
+ * `avanceFisico`/`avanceFinanciero` "actual" de la obra.
  */
 export async function crearAvance(
   obraId: string,
   data: CrearAvanceInput,
-  ctx: { usuarioId: string; email: string }
+  ctx: { usuarioId: string; rol: string }
 ) {
   const obra = await prisma.obra.findUnique({ where: { id: obraId } });
   if (!obra) return null;
+
+  const pendiente = obra.estadoPublicacion === 'PUBLICADO' && !ROLES_APROBADORES.includes(ctx.rol);
+  const ahora = new Date();
 
   // El avance, la cifra actual de la obra y su sello de integridad se guardan
   // juntos: si algo falla, no queda un avance sin sellar.
@@ -58,16 +75,24 @@ export async function crearAvance(
         comentario: data.comentario,
         fecha: data.fecha ? new Date(data.fecha) : undefined,
         registradoPor: ctx.usuarioId,
+        ...(pendiente
+          ? {}
+          : {
+              aprobadoEn: ahora,
+              aprobadoPor: obra.estadoPublicacion === 'PUBLICADO' ? ctx.usuarioId : null,
+            }),
       },
     });
-    await tx.obra.update({
-      where: { id: obraId },
-      data: {
-        avanceFisico: data.avanceFisico,
-        avanceFinanciero: data.avanceFinanciero,
-        actualizadoPor: ctx.usuarioId,
-      },
-    });
+    if (!pendiente) {
+      await tx.obra.update({
+        where: { id: obraId },
+        data: {
+          avanceFisico: data.avanceFisico,
+          avanceFinanciero: data.avanceFinanciero,
+          actualizadoPor: ctx.usuarioId,
+        },
+      });
+    }
     await registrarIntegridad(tx, {
       entidad: 'Avance',
       entidadId: creado.id,
@@ -83,15 +108,69 @@ export async function crearAvance(
     accion: 'CREATE',
     entidad: 'Avance',
     entidadId: avance.id,
-    datosDespues: avance,
+    datosDespues: { ...avance, pendienteDeAprobacion: pendiente },
   });
 
   // Aviso a los suscriptores en segundo plano: un fallo de correo no afecta al avance ya guardado.
-  void notificarSuscriptores(obraId, {
-    tipo: 'AVANCE',
-    avanceFisico: data.avanceFisico,
-    avanceFinanciero: data.avanceFinanciero,
-  });
+  if (!pendiente) {
+    void notificarSuscriptores(obraId, {
+      tipo: 'AVANCE',
+      avanceFisico: data.avanceFisico,
+      avanceFinanciero: data.avanceFinanciero,
+    });
+  }
 
   return avance;
+}
+
+/** Aprueba un avance pendiente: desde ahora es público y fija la cifra actual de la obra. */
+export async function aprobarAvance(avanceId: string, ctx: { usuarioId: string; rol: string }) {
+  if (!ROLES_APROBADORES.includes(ctx.rol)) {
+    throw new AvanceError(403, 'No tienes permiso para aprobar avances.');
+  }
+  const avance = await prisma.avance.findUnique({ where: { id: avanceId } });
+  if (!avance) return null;
+  if (avance.aprobadoEn) throw new AvanceError(409, 'Este avance ya está aprobado.');
+
+  const aprobado = await prisma.$transaction(async (tx) => {
+    const actualizado = await tx.avance.update({
+      where: { id: avanceId },
+      data: { aprobadoEn: new Date(), aprobadoPor: ctx.usuarioId },
+    });
+    // La cifra actual sigue al avance aprobado más reciente por fecha; aprobar
+    // uno antiguo no pisa uno posterior.
+    const masReciente = await tx.avance.findFirst({
+      where: { obraId: avance.obraId, aprobadoEn: { not: null } },
+      orderBy: [{ fecha: 'desc' }, { createdAt: 'desc' }],
+    });
+    if (masReciente?.id === actualizado.id) {
+      await tx.obra.update({
+        where: { id: avance.obraId },
+        data: {
+          avanceFisico: actualizado.avanceFisico,
+          avanceFinanciero: actualizado.avanceFinanciero,
+          actualizadoPor: ctx.usuarioId,
+        },
+      });
+    }
+    return { actualizado, esLaCifraActual: masReciente?.id === actualizado.id };
+  });
+
+  await registrarAuditoria({
+    usuarioId: ctx.usuarioId,
+    accion: 'APPROVE',
+    entidad: 'Avance',
+    entidadId: avanceId,
+    datosAntes: { aprobadoEn: null },
+    datosDespues: { aprobadoEn: aprobado.actualizado.aprobadoEn, aprobadoPor: ctx.usuarioId },
+  });
+
+  if (aprobado.esLaCifraActual) {
+    void notificarSuscriptores(avance.obraId, {
+      tipo: 'AVANCE',
+      avanceFisico: avance.avanceFisico,
+      avanceFinanciero: avance.avanceFinanciero,
+    });
+  }
+  return aprobado.actualizado;
 }

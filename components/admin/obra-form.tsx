@@ -233,6 +233,12 @@ export function ObraForm({ catalogos, obraId, valoresIniciales }: ObraFormProps)
         return;
       }
 
+      const guardada: { obra?: { devueltaARevision?: boolean } } | null = await res.json().catch(() => null);
+      if (guardada?.obra?.devueltaARevision) {
+        window.alert(
+          'La obra se guardó, pero como cambiaste datos sensibles de una obra publicada volvió a "En revisión": no se verá en el portal hasta que un aprobador la apruebe de nuevo.'
+        );
+      }
       router.push('/admin/obras');
       router.refresh();
     } catch {

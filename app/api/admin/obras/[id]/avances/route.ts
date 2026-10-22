@@ -37,7 +37,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const body = await request.json();
     const datos = crearAvanceSchema.parse(body);
 
-    const avance = await crearAvance(id, datos, { usuarioId: usuario.sub, email: usuario.email });
+    const avance = await crearAvance(id, datos, { usuarioId: usuario.sub, rol: usuario.rol });
     if (!avance) return NextResponse.json({ error: 'Obra no encontrada' }, { status: 404 });
 
     return NextResponse.json({ avance }, { status: 201 });
