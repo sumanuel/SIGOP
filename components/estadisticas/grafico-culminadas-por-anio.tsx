@@ -8,7 +8,7 @@ interface GraficoCulminadasPorAnioProps {
 
 export function GraficoCulminadasPorAnio({ datos }: GraficoCulminadasPorAnioProps) {
   if (datos.length === 0) {
-    return <p className="text-sm text-muted-foreground">Todavía no hay obras culminadas registradas.</p>;
+    return <p className="text-sm text-muted-foreground">No hay obras culminadas con estos filtros.</p>;
   }
 
   return (

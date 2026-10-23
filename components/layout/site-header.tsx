@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Menu, X } from 'lucide-react';
 import { SelectorTema } from '@/components/layout/selector-tema';
 
@@ -13,11 +14,17 @@ const ENLACES = [
   { href: '/admin/login', label: 'Acceso administrativo' },
 ];
 
+/** El mapa es "/" (solo coincide exacto); las demás secciones incluyen sus subrutas (/ranking/…). */
+function estaActivo(href: string, pathname: string) {
+  return href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`);
+}
+
 // En pantallas angostas los 3 enlaces ya no caben junto al logo (se
 // apretaban contra "SIGOP" o partían "Acceso administrativo" en dos
 // líneas) — a partir de `sm` se ocultan detrás de un botón de menú.
 export function SiteHeader() {
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const pathname = usePathname();
 
   return (
     <header className="relative z-20 flex print:hidden h-16 shrink-0 items-center justify-between border-b-2 border-primary/15 bg-background px-4 sm:px-6">
@@ -38,7 +45,12 @@ export function SiteHeader() {
           <Link
             key={enlace.href}
             href={enlace.href}
-            className={enlace.href === '/' ? 'text-foreground hover:text-primary' : 'text-foreground/70 hover:text-primary'}
+            aria-current={estaActivo(enlace.href, pathname) ? 'page' : undefined}
+            className={
+              estaActivo(enlace.href, pathname)
+                ? 'border-b-2 border-primary py-1 text-foreground'
+                : 'border-b-2 border-transparent py-1 text-foreground/70 hover:text-primary'
+            }
           >
             {enlace.label}
           </Link>
@@ -66,8 +78,9 @@ export function SiteHeader() {
               key={enlace.href}
               href={enlace.href}
               onClick={() => setMenuAbierto(false)}
+              aria-current={estaActivo(enlace.href, pathname) ? 'page' : undefined}
               className={`rounded-md px-3 py-2.5 hover:bg-primary/10 ${
-                enlace.href === '/' ? 'text-foreground' : 'text-foreground/70'
+                estaActivo(enlace.href, pathname) ? 'bg-primary/10 font-semibold text-foreground' : 'text-foreground/70'
               }`}
             >
               {enlace.label}

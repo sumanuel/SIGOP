@@ -3,14 +3,16 @@ import { formatearMoneda } from '@/lib/format';
 interface RankingEstadosProps {
   datos: { estado: string; cantidad: number; inversionPorMoneda: Record<string, number>; avancePromedio: number }[];
   monedas: string[];
+  seleccionado?: string;
+  onSeleccionar?: (estado: string) => void;
 }
 
 // Ranking simple por avance promedio (PLAN_PROYECTO.md sección 3.1). Ver
 // MODULOS_AVANZADOS.md módulo 5 para una versión más completa (costo por
 // unidad, cumplimiento de plazos) si se retoma como mejora futura.
-export function RankingEstados({ datos, monedas }: RankingEstadosProps) {
+export function RankingEstados({ datos, monedas, seleccionado, onSeleccionar }: RankingEstadosProps) {
   if (datos.length === 0) {
-    return <p className="text-sm text-muted-foreground">Sin datos todavía.</p>;
+    return <p className="text-sm text-muted-foreground">Sin datos con estos filtros.</p>;
   }
 
   return (
@@ -27,9 +29,18 @@ export function RankingEstados({ datos, monedas }: RankingEstadosProps) {
         </thead>
         <tbody>
           {datos.map((fila, i) => (
-            <tr key={fila.estado} className="border-t border-border">
+            <tr key={fila.estado} className={`border-t border-border ${seleccionado === fila.estado ? 'bg-muted/60' : ''}`}>
               <td className="py-2 pr-4 text-muted-foreground">{i + 1}</td>
-              <td className="py-2 pr-4 font-medium">{fila.estado}</td>
+              <td className="py-2 pr-4 font-medium">
+                <button
+                  type="button"
+                  onClick={() => onSeleccionar?.(fila.estado)}
+                  aria-pressed={seleccionado === fila.estado}
+                  className="-mx-2 min-h-9 rounded-md px-2 text-left hover:bg-muted"
+                >
+                  {fila.estado}
+                </button>
+              </td>
               <td className="py-2 pr-4">{fila.cantidad}</td>
               <td className="py-2 pr-4 tabular-nums">
                 {monedas.filter((m) => fila.inversionPorMoneda[m]).length === 0

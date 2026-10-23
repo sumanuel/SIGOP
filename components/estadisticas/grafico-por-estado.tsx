@@ -1,22 +1,25 @@
 'use client';
 
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { formatearMoneda } from '@/lib/format';
 
 interface GraficoPorEstadoProps {
   datos: { estado: string; inversionPorMoneda: Record<string, number> }[];
   /** Cada gráfica muestra una sola moneda: sumar bolívares con dólares no tiene sentido. */
   moneda: string;
+  /** Estado filtrado en este momento (los demás se atenúan). */
+  seleccionado?: string;
+  onSeleccionar?: (estado: string) => void;
 }
 
-export function GraficoPorEstado({ datos, moneda }: GraficoPorEstadoProps) {
+export function GraficoPorEstado({ datos, moneda, seleccionado, onSeleccionar }: GraficoPorEstadoProps) {
   const ordenados = datos
     .map((d) => ({ estado: d.estado, inversion: d.inversionPorMoneda[moneda] ?? 0 }))
     .filter((d) => d.inversion > 0)
     .sort((a, b) => b.inversion - a.inversion);
 
   if (ordenados.length === 0) {
-    return <p className="text-sm text-muted-foreground">Sin datos todavía.</p>;
+    return <p className="text-sm text-muted-foreground">Sin datos con estos filtros.</p>;
   }
 
   return (
@@ -31,7 +34,16 @@ export function GraficoPorEstado({ datos, moneda }: GraficoPorEstadoProps) {
           />
           <YAxis type="category" dataKey="estado" width={110} tick={{ fontSize: 12 }} />
           <Tooltip formatter={(valor) => formatearMoneda(Number(valor), moneda)} />
-          <Bar dataKey="inversion" fill="var(--color-chart-1)" radius={4} />
+          <Bar
+            dataKey="inversion"
+            radius={4}
+            onClick={(barra) => onSeleccionar?.(String((barra.payload as { estado: string }).estado))}
+            style={{ cursor: onSeleccionar ? 'pointer' : undefined }}
+          >
+            {ordenados.map((d) => (
+              <Cell key={d.estado} fill="var(--color-chart-1)" fillOpacity={!seleccionado || seleccionado === d.estado ? 1 : 0.25} />
+            ))}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </div>
