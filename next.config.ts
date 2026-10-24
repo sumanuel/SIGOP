@@ -36,7 +36,18 @@ const cabeceras = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   async headers() {
-    return [{ source: "/:path*", headers: cabeceras }];
+    return [
+      { source: "/:path*", headers: cabeceras },
+      // El service worker nunca debe quedar en el caché del navegador: así una versión nueva
+      // se detecta al instante. `Service-Worker-Allowed` fija su alcance a todo el sitio.
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Service-Worker-Allowed", value: "/" },
+        ],
+      },
+    ];
   },
 };
 

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { BotonInstalar } from '@/components/pwa/boton-instalar';
 
 // Pie de página institucional.
 export function SiteFooter() {
@@ -24,6 +25,7 @@ export function SiteFooter() {
         <Link href="/datos-abiertos" className="hover:text-primary">
           Datos abiertos
         </Link>
+        <BotonInstalar />
       </nav>
     </footer>
   );
