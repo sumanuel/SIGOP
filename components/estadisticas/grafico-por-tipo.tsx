@@ -33,7 +33,7 @@ export function GraficoPorTipo({ datos, seleccionado, onSeleccionar }: GraficoPo
                 <Cell key={d.nombre} fill={d.color} fillOpacity={!seleccionado || seleccionado === d.nombre ? 1 : 0.25} />
               ))}
             </Pie>
-            <Tooltip formatter={(valor, nombre) => [`${valor} obras`, nombre]} />
+            <Tooltip formatter={(valor, nombre) => [`${valor} ${valor === 1 ? 'obra' : 'obras'}`, nombre]} />
           </PieChart>
         </ResponsiveContainer>
       </div>

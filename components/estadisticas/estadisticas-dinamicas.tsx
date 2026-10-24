@@ -179,7 +179,12 @@ export function EstadisticasDinamicas({ filas, filtrosIniciales }: EstadisticasD
 
       <section className="mt-8 rounded-lg border border-border p-4">
         <h2 className="mb-4 text-sm font-semibold">Evolución en el tiempo</h2>
-        <GraficoEvolucion filas={filasParaEvolucion} monedas={monedasEvolucion} />
+        <GraficoEvolucion
+          filas={filasParaEvolucion}
+          monedas={monedasEvolucion}
+          anioSeleccionado={filtros.anio}
+          onSeleccionarAnio={(anio) => cambiar({ ...filtros, anio: filtros.anio === anio ? undefined : anio })}
+        />
       </section>
 
       <section className="mt-8 rounded-lg border border-border p-4">

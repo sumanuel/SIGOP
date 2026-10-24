@@ -21,7 +21,7 @@ export function GraficoPorEstatus({ datos, seleccionado, onSeleccionar }: Grafic
             <CartesianGrid horizontal={false} strokeOpacity={0.2} />
             <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
             <YAxis type="category" dataKey="nombre" width={110} tick={{ fontSize: 12 }} />
-            <Tooltip formatter={(valor) => [`${valor} obras`, 'Cantidad']} />
+            <Tooltip formatter={(valor) => [`${valor} ${valor === 1 ? 'obra' : 'obras'}`, 'Cantidad']} />
             <Bar
               dataKey="cantidad"
               radius={4}
