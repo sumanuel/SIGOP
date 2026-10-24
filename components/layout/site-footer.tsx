@@ -25,6 +25,9 @@ export function SiteFooter() {
         <Link href="/datos-abiertos" className="hover:text-primary">
           Datos abiertos
         </Link>
+        <Link href="/kiosco" className="hover:text-primary">
+          Modo kiosco
+        </Link>
         <BotonInstalar />
       </nav>
     </footer>

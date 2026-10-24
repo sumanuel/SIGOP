@@ -107,7 +107,10 @@ export default function ObrasMap({ obras, onSeleccionarObra, enfoque, capa = CAP
   useEffect(() => {
     const mapa = mapaRef.current;
     if (!mapa || !enfoque) return;
-    mapa.flyTo({ center: [enfoque.obra.lng, enfoque.obra.lat], zoom: Math.max(mapa.getZoom(), 12), essential: true });
+    const destino = { center: [enfoque.obra.lng, enfoque.obra.lat] as [number, number], zoom: Math.max(mapa.getZoom(), 12) };
+    // Quien pidió "reducir movimiento" no ve el vuelo animado: el mapa salta directo.
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) mapa.jumpTo(destino);
+    else mapa.flyTo({ ...destino, essential: true });
   }, [enfoque]);
 
   // Reconstruye el índice de clustering cada vez que cambia la lista de
