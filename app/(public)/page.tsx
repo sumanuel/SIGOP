@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import ObrasMapLoader from '@/components/map/obras-map-loader';
-import { MapSidebar, claveAnio, type Vista } from '@/components/map/map-sidebar';
+import { MapSidebar, claveAnio, claveParroquia, type Vista } from '@/components/map/map-sidebar';
 import { ObrasLista } from '@/components/map/obras-lista';
 import { ObraDetallePanel } from '@/components/map/obra-detalle-panel';
 import { OBRAS_DEMO } from '@/lib/data/obras-demo';
@@ -39,6 +39,7 @@ export default function MapaPage() {
   const [tiposActivos, setTiposActivos] = useState<Set<string>>(new Set());
   const [estadosActivos, setEstadosActivos] = useState<Set<string>>(new Set());
   const [municipiosActivos, setMunicipiosActivos] = useState<Set<string>>(new Set());
+  const [parroquiasActivas, setParroquiasActivas] = useState<Set<string>>(new Set());
   const [estatusActivos, setEstatusActivos] = useState<Set<string>>(new Set());
   const [aniosActivos, setAniosActivos] = useState<Set<string>>(new Set());
   const [rangoAvance, setRangoAvance] = useState<[number, number]>([0, 100]);
@@ -53,6 +54,7 @@ export default function MapaPage() {
     setTiposActivos(new Set(nuevas.map((o) => o.tipoObra.nombre)));
     setEstadosActivos(new Set(nuevas.map((o) => o.estado)));
     setMunicipiosActivos(new Set(nuevas.map((o) => o.municipio)));
+    setParroquiasActivas(new Set(nuevas.map(claveParroquia)));
     setEstatusActivos(new Set(nuevas.map((o) => o.estatus.nombre)));
     setAniosActivos(new Set(nuevas.map(claveAnio)));
 
@@ -124,6 +126,7 @@ export default function MapaPage() {
     if (!tiposActivos.has(o.tipoObra.nombre)) return false;
     if (!estadosActivos.has(o.estado)) return false;
     if (!municipiosActivos.has(o.municipio)) return false;
+    if (!parroquiasActivas.has(claveParroquia(o))) return false;
     if (!estatusActivos.has(o.estatus.nombre)) return false;
     if (!aniosActivos.has(claveAnio(o))) return false;
     if (o.avanceFisico < rangoAvance[0] || o.avanceFisico > rangoAvance[1]) return false;
@@ -158,6 +161,8 @@ export default function MapaPage() {
         onCambiarEstados={setEstadosActivos}
         municipiosActivos={municipiosActivos}
         onCambiarMunicipios={setMunicipiosActivos}
+        parroquiasActivas={parroquiasActivas}
+        onCambiarParroquias={setParroquiasActivas}
         estatusActivos={estatusActivos}
         onCambiarEstatus={setEstatusActivos}
         aniosActivos={aniosActivos}

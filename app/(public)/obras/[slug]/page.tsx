@@ -68,6 +68,7 @@ export default async function ObraFichaPage({ params }: PageProps) {
           anioAprobacion: obra.fechaAprobacion ? obra.fechaAprobacion.getFullYear() : null,
           estado: obra.estado.nombre,
           municipio: obra.municipio.nombre,
+          parroquia: obra.parroquia?.nombre ?? null,
           lat: obra.lat,
           lng: obra.lng,
           trazado: obra.trazado,

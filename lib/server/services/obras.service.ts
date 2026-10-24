@@ -28,6 +28,7 @@ interface FilaObraMapa {
   anioAprobacion: number | null;
   estado: string;
   municipio: string;
+  parroquia: string | null;
   tipoObraNombre: string;
   tipoObraColor: string | null;
   tipoObraIcono: string | null;
@@ -52,6 +53,7 @@ export async function listarObrasParaMapa(): Promise<ObraMapa[]> {
       EXTRACT(YEAR FROM o."fechaAprobacion")::int AS "anioAprobacion",
       es.nombre AS estado,
       m.nombre AS municipio,
+      pa.nombre AS parroquia,
       t.nombre AS "tipoObraNombre",
       t.color AS "tipoObraColor",
       t.icono AS "tipoObraIcono",
@@ -63,6 +65,7 @@ export async function listarObrasParaMapa(): Promise<ObraMapa[]> {
     JOIN tipos_obra t ON t.id = o."tipoObraId"
     JOIN estatus_obra e ON e.id = o."estatusId"
     JOIN municipios m ON m.id = o."municipioId"
+    LEFT JOIN parroquias pa ON pa.id = o."parroquiaId"
     JOIN estados es ON es.id = o."estadoId"
     WHERE o."estadoPublicacion" = 'PUBLICADO'
       AND o.ubicacion IS NOT NULL
@@ -85,6 +88,7 @@ export async function listarObrasParaMapa(): Promise<ObraMapa[]> {
       anioAprobacion: fila.anioAprobacion,
       estado: fila.estado,
       municipio: fila.municipio,
+      parroquia: fila.parroquia,
       tipoObra: {
         nombre: fila.tipoObraNombre,
         color: fila.tipoObraColor ?? '#6B7280',

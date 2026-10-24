@@ -20,6 +20,8 @@ interface MapSidebarProps {
   onCambiarEstados: (nuevo: Set<string>) => void;
   municipiosActivos: Set<string>;
   onCambiarMunicipios: (nuevo: Set<string>) => void;
+  parroquiasActivas: Set<string>;
+  onCambiarParroquias: (nuevo: Set<string>) => void;
   estatusActivos: Set<string>;
   onCambiarEstatus: (nuevo: Set<string>) => void;
   aniosActivos: Set<string>;
@@ -45,6 +47,14 @@ interface MapSidebarProps {
 
 const MAX_DESTACADAS = 5;
 
+/**
+ * Clave única de parroquia: el nombre solo no basta (hay parroquias con el mismo nombre en
+ * municipios distintos), así que va precedido del municipio. Sin parroquia: «Sin parroquia».
+ */
+export function claveParroquia(obra: ObraMapa): string {
+  return obra.parroquia ? `${obra.municipio} · ${obra.parroquia}` : 'Sin parroquia';
+}
+
 /** "2025" o, para obras sin fecha de aprobación, el bucket "Sin fecha". */
 export function claveAnio(obra: ObraMapa): string {
   return obra.anioAprobacion !== null ? String(obra.anioAprobacion) : 'Sin fecha';
@@ -68,6 +78,8 @@ export function MapSidebar({
   onCambiarEstados,
   municipiosActivos,
   onCambiarMunicipios,
+  parroquiasActivas,
+  onCambiarParroquias,
   estatusActivos,
   onCambiarEstatus,
   aniosActivos,
@@ -104,6 +116,11 @@ export function MapSidebar({
   ]);
   const estadosItems = construirItems(obras, (o) => [{ valor: o.estado, etiqueta: o.estado }]);
   const municipiosItems = construirItems(obras, (o) => [{ valor: o.municipio, etiqueta: o.municipio }]);
+  const parroquiasItems = construirItems(obras, (o) => [{ valor: claveParroquia(o), etiqueta: claveParroquia(o) }]).sort((a, b) =>
+    a.valor === 'Sin parroquia' ? 1 : b.valor === 'Sin parroquia' ? -1 : a.etiqueta.localeCompare(b.etiqueta)
+  );
+  // Si ninguna obra tiene parroquia registrada, el filtro solo tendría la opción «Sin parroquia»: no se muestra.
+  const hayParroquias = obras.some((o) => o.parroquia);
   const aniosItems = construirItems(obras, (o) => [{ valor: claveAnio(o), etiqueta: claveAnio(o) }]).sort(
     (a, b) => (a.valor === 'Sin fecha' ? 1 : b.valor === 'Sin fecha' ? -1 : b.valor.localeCompare(a.valor))
   );
@@ -235,6 +252,14 @@ export function MapSidebar({
         activos={municipiosActivos}
         onCambiar={onCambiarMunicipios}
       />
+      {hayParroquias && (
+        <FiltroDesplegable
+          titulo="Parroquia"
+          items={parroquiasItems}
+          activos={parroquiasActivas}
+          onCambiar={onCambiarParroquias}
+        />
+      )}
       <FiltroDesplegable
         titulo="Año de aprobación"
         items={aniosItems}

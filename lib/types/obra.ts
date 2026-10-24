@@ -26,6 +26,8 @@ export interface ObraMapa {
   anioAprobacion: number | null;
   estado: string;
   municipio: string;
+  /** Parroquia de la obra; `null` si no se registró (se agrupa como «Sin parroquia» en el filtro). */
+  parroquia: string | null;
   lat: number;
   lng: number;
   /** Solo para obras lineales (vías, tuberías, tendidos). `null` si la obra es puntual. */
