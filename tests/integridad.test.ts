@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HASH_GENESIS, calcularHash, canonico, datosSelladosDeAvance } from '@/lib/server/integridad/hash';
+import { HASH_GENESIS, calcularHash, canonico, clasificarAvances, datosSelladosDeAvance } from '@/lib/server/integridad/hash';
 
 describe('canonico', () => {
   it('no depende del orden de las claves', () => {
@@ -49,5 +49,35 @@ describe('datosSelladosDeAvance', () => {
       fecha: '2026-01-02T03:04:05.000Z',
       comentario: null,
     });
+  });
+});
+
+describe('clasificarAvances', () => {
+  const avance = (id: string, fisico = 10) => ({
+    id,
+    obraId: 'o1',
+    avanceFisico: fisico,
+    avanceFinanciero: 12,
+    fecha: new Date('2026-01-02T03:04:05Z'),
+    comentario: null,
+  });
+  const sello = (a: ReturnType<typeof avance>) => ({ entidadId: a.id, datos: datosSelladosDeAvance(a) });
+
+  it('todo coincide: íntegros', () => {
+    const a = avance('a1');
+    expect(clasificarAvances([a], [sello(a)])).toEqual({ total: 1, integros: 1, sinSello: 0, alterados: 0, eliminados: 0 });
+  });
+
+  it('un avance cambiado después de sellarse se detecta como alterado', () => {
+    const original = avance('a1', 10);
+    expect(clasificarAvances([avance('a1', 99)], [sello(original)])).toMatchObject({ alterados: 1, integros: 0 });
+  });
+
+  it('un avance sin sello se cuenta aparte y no como alterado', () => {
+    expect(clasificarAvances([avance('a1')], [])).toMatchObject({ sinSello: 1, alterados: 0 });
+  });
+
+  it('un sello cuyo avance ya no existe se cuenta como eliminado', () => {
+    expect(clasificarAvances([], [sello(avance('a1'))])).toMatchObject({ eliminados: 1, total: 0 });
   });
 });

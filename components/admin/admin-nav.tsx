@@ -15,6 +15,7 @@ const ENLACES = [
   { href: '/admin/alertas', label: 'Alertas' },
   { href: '/admin/denuncias', label: 'Denuncias' },
   { href: '/admin/auditoria', label: 'Auditoría' },
+  { href: '/admin/integridad', label: 'Integridad' },
   { href: '/admin/catalogos', label: 'Catálogos' },
   { href: '/admin/usuarios', label: 'Usuarios' },
   { href: '/admin/seguridad', label: 'Seguridad' },

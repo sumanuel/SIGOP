@@ -42,3 +42,35 @@ export function datosSelladosDeAvance(avance: {
     comentario: avance.comentario ?? null,
   };
 }
+
+type AvanceSellable = Parameters<typeof datosSelladosDeAvance>[0] & { id: string };
+
+export interface ConteoAvances {
+  total: number;
+  integros: number;
+  sinSello: number;
+  alterados: number;
+  eliminados: number;
+}
+
+/**
+ * Compara los avances guardados hoy con lo que se selló al registrarlos:
+ * íntegro (coincide), alterado (cambió), sin sello (anterior al módulo) y
+ * eliminado (tiene sello pero ya no existe en la tabla).
+ */
+export function clasificarAvances(avances: AvanceSellable[], sellos: { entidadId: string; datos: unknown }[]): ConteoAvances {
+  const selloPorAvance = new Map(sellos.map((s) => [s.entidadId, s]));
+  const idsActuales = new Set(avances.map((a) => a.id));
+
+  let integros = 0;
+  let sinSello = 0;
+  let alterados = 0;
+  for (const avance of avances) {
+    const sello = selloPorAvance.get(avance.id);
+    if (!sello) sinSello++;
+    else if (canonico(sello.datos) === canonico(datosSelladosDeAvance(avance))) integros++;
+    else alterados++;
+  }
+  const eliminados = [...selloPorAvance.keys()].filter((id) => !idsActuales.has(id)).length;
+  return { total: avances.length, integros, sinSello, alterados, eliminados };
+}

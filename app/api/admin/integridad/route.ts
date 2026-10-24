@@ -1,13 +1,13 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { requireAuth, AuthError } from '@/lib/server/require-auth';
-import { sellarAvancesExistentes, verificarCadena } from '@/lib/server/services/integridad.service';
+import { diagnosticoGeneral, sellarAvancesExistentes } from '@/lib/server/services/integridad.service';
 import { registrarAuditoria } from '@/lib/server/services/auditoria.service';
 
 // GET /api/admin/integridad — estado de la cadena completa.
 export async function GET(request: NextRequest) {
   try {
     requireAuth(request, ['SUPER_ADMIN', 'ADMIN_ENTE', 'EDITOR_OBRA', 'APROBADOR', 'CONSULTA']);
-    return NextResponse.json({ cadena: await verificarCadena() });
+    return NextResponse.json({ diagnostico: await diagnosticoGeneral() });
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

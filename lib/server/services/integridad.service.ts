@@ -1,6 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/server/prisma';
-import { HASH_GENESIS, calcularHash, canonico, datosSelladosDeAvance } from '@/lib/server/integridad/hash';
+import { HASH_GENESIS, calcularHash, clasificarAvances, datosSelladosDeAvance } from '@/lib/server/integridad/hash';
 
 type Tx = Prisma.TransactionClient;
 
@@ -97,29 +97,12 @@ export async function verificarObra(obraId: string): Promise<VerificacionObra> {
     prisma.registroIntegridad.findMany({ where: { obraId, entidad: 'Avance' }, orderBy: { secuencia: 'asc' } }),
   ]);
 
-  const selloPorAvance = new Map(registros.map((r) => [r.entidadId, r]));
-  const idsActuales = new Set(avances.map((a) => a.id));
-
-  let integros = 0;
-  let sinSello = 0;
-  let alterados = 0;
-  for (const avance of avances) {
-    const sello = selloPorAvance.get(avance.id);
-    if (!sello) {
-      sinSello++;
-    } else if (canonico(sello.datos) === canonico(datosSelladosDeAvance(avance))) {
-      integros++;
-    } else {
-      alterados++;
-    }
-  }
-  // Avances que tenían sello y ya no existen en la tabla (borrados por fuera del sistema).
-  const eliminados = [...selloPorAvance.keys()].filter((id) => !idsActuales.has(id)).length;
+  const conteo = clasificarAvances(avances, registros);
 
   return {
-    ok: cadena.ok && alterados === 0 && eliminados === 0,
+    ok: cadena.ok && conteo.alterados === 0 && conteo.eliminados === 0,
     cadena,
-    avances: { total: avances.length, integros, sinSello, alterados, eliminados },
+    avances: conteo,
     selladoDesde: registros[0]?.createdAt ?? null,
   };
 }
@@ -149,4 +132,49 @@ export async function sellarAvancesExistentes(): Promise<{ sellados: number }> {
     sellados++;
   }
   return { sellados };
+}
+
+export interface DiagnosticoIntegridad {
+  ok: boolean;
+  cadena: EstadoCadena;
+  /** Avances anteriores a la activación del módulo que todavía no tienen sello. */
+  sinSellar: number;
+  /** Solo las obras con algún avance alterado o eliminado (las que hay que revisar). */
+  obrasConProblemas: { obraId: string; codigo: string; nombre: string; alterados: number; eliminados: number }[];
+}
+
+/** Revisión completa para el panel: la cadena entera y, obra por obra, qué no coincide con su sello. */
+export async function diagnosticoGeneral(): Promise<DiagnosticoIntegridad> {
+  const [cadena, avances, registros, obras] = await Promise.all([
+    verificarCadena(),
+    prisma.avance.findMany(),
+    prisma.registroIntegridad.findMany({ where: { entidad: 'Avance' }, orderBy: { secuencia: 'asc' } }),
+    prisma.obra.findMany({ select: { id: true, codigo: true, nombre: true } }),
+  ]);
+
+  const avancesPorObra = new Map<string, typeof avances>();
+  for (const a of avances) avancesPorObra.set(a.obraId, [...(avancesPorObra.get(a.obraId) ?? []), a]);
+  const sellosPorObra = new Map<string, typeof registros>();
+  for (const r of registros) sellosPorObra.set(r.obraId, [...(sellosPorObra.get(r.obraId) ?? []), r]);
+
+  const nombres = new Map(obras.map((o) => [o.id, o]));
+  const obrasConProblemas: DiagnosticoIntegridad['obrasConProblemas'] = [];
+  // Se revisan también obras con sellos pero sin avances (un avance eliminado de una obra que quedó vacía).
+  for (const obraId of new Set([...avancesPorObra.keys(), ...sellosPorObra.keys()])) {
+    const c = clasificarAvances(avancesPorObra.get(obraId) ?? [], sellosPorObra.get(obraId) ?? []);
+    if (c.alterados > 0 || c.eliminados > 0) {
+      const obra = nombres.get(obraId);
+      obrasConProblemas.push({
+        obraId,
+        codigo: obra?.codigo ?? '—',
+        nombre: obra?.nombre ?? 'Obra eliminada',
+        alterados: c.alterados,
+        eliminados: c.eliminados,
+      });
+    }
+  }
+
+  const selladas = new Set(registros.map((r) => r.entidadId));
+  const sinSellar = avances.filter((a) => !selladas.has(a.id)).length;
+  return { ok: cadena.ok && obrasConProblemas.length === 0, cadena, sinSellar, obrasConProblemas };
 }
