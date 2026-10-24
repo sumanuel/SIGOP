@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import type { ObraMapa } from '@/lib/types/obra';
+import type { CapaMapa } from '@/lib/map-style';
 
 // MapLibre GL toca `window`/WebGL al cargar — se carga solo en el cliente
 // (ssr: false) para evitar errores durante el renderizado en el servidor.
@@ -18,6 +19,7 @@ interface ObrasMapLoaderProps {
   obras: ObraMapa[];
   onSeleccionarObra?: (obra: ObraMapa) => void;
   enfoque?: { obra: ObraMapa; token: number } | null;
+  capa?: CapaMapa;
 }
 
 export default function ObrasMapLoader(props: ObrasMapLoaderProps) {

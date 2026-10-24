@@ -6,7 +6,7 @@ const esProduccion = process.env.NODE_ENV === "production";
 // permite 'unsafe-inline' (una CSP con nonce obligaría a renderizar todo el
 // sitio en modo dinámico); en desarrollo además 'unsafe-eval' para React Refresh.
 // - img-src https: porque las fotos de reportes ciudadanos son URLs externas.
-// - connect-src incluye las teselas de OpenStreetMap que descarga MapLibre.
+// - connect-src incluye las teselas (OpenStreetMap, Esri y OpenTopoMap) que descarga MapLibre.
 const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${esProduccion ? "" : " 'unsafe-eval'"}`,
@@ -14,7 +14,7 @@ const csp = [
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob:",
   "font-src 'self' data:",
-  `connect-src 'self' https://tile.openstreetmap.org https://*.tile.openstreetmap.org${esProduccion ? "" : " ws: wss:"}`,
+  `connect-src 'self' https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://server.arcgisonline.com https://*.tile.opentopomap.org${esProduccion ? "" : " ws: wss:"}`,
   "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",

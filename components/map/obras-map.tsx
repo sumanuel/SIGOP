@@ -6,7 +6,7 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import Supercluster, { type ClusterFeature, type PointFeature } from 'supercluster';
 import type { ObraMapa } from '@/lib/types/obra';
-import { OSM_STYLE, CENTRO_VENEZUELA, ZOOM_INICIAL } from '@/lib/map-style';
+import { CAPAS_MAPA, CAPA_POR_DEFECTO, crearEstiloMapaPublico, CENTRO_VENEZUELA, ZOOM_INICIAL, idCapaMapa, type CapaMapa } from '@/lib/map-style';
 import { obtenerIconoTipoObra } from '@/lib/tipo-obra-icono';
 
 interface ObrasMapProps {
@@ -14,6 +14,8 @@ interface ObrasMapProps {
   onSeleccionarObra?: (obra: ObraMapa) => void;
   /** Pide acercar el mapa a una obra (p. ej. desde la lista de destacadas). `token` cambia en cada pedido, para poder repetirlo. */
   enfoque?: { obra: ObraMapa; token: number } | null;
+  /** Capa base visible (calles, satélite o relieve). */
+  capa?: CapaMapa;
 }
 
 interface PropiedadesPunto {
@@ -33,13 +35,15 @@ type Indice = Supercluster<PropiedadesPunto, PropiedadesPunto>;
 const RADIO_CLUSTER = 60; // px — dos puntos a menos de esto se agrupan
 const ZOOM_MAXIMO_CLUSTER = 16; // desde este zoom, todo se muestra individual
 
-export default function ObrasMap({ obras, onSeleccionarObra, enfoque }: ObrasMapProps) {
+export default function ObrasMap({ obras, onSeleccionarObra, enfoque, capa = CAPA_POR_DEFECTO }: ObrasMapProps) {
   const contenedorRef = useRef<HTMLDivElement | null>(null);
   const mapaRef = useRef<maplibregl.Map | null>(null);
   const marcadoresRef = useRef<maplibregl.Marker[]>([]);
   const indiceRef = useRef<Indice | null>(null);
   const obrasPorIdRef = useRef<Map<string, ObraMapa>>(new Map());
   const onSeleccionarObraRef = useRef(onSeleccionarObra);
+  // La capa con la que nace el mapa; los cambios posteriores los aplica el efecto de `capa`.
+  const capaInicialRef = useRef(capa);
 
   useEffect(() => {
     onSeleccionarObraRef.current = onSeleccionarObra;
@@ -51,7 +55,7 @@ export default function ObrasMap({ obras, onSeleccionarObra, enfoque }: ObrasMap
 
     const mapa = new maplibregl.Map({
       container: contenedorRef.current,
-      style: OSM_STYLE,
+      style: crearEstiloMapaPublico(capaInicialRef.current),
       center: CENTRO_VENEZUELA,
       zoom: ZOOM_INICIAL,
       attributionControl: false,
@@ -84,6 +88,20 @@ export default function ObrasMap({ obras, onSeleccionarObra, enfoque }: ObrasMap
       mapaRef.current = null;
     };
   }, []);
+
+  // Muestra solo la capa base elegida. Si el estilo aún no cargó, lo aplica al cargar.
+  useEffect(() => {
+    const mapa = mapaRef.current;
+    if (!mapa) return;
+    function aplicar() {
+      if (!mapa) return;
+      for (const { id } of CAPAS_MAPA) {
+        mapa.setLayoutProperty(idCapaMapa(id), 'visibility', id === capa ? 'visible' : 'none');
+      }
+    }
+    if (mapa.isStyleLoaded()) aplicar();
+    else mapa.once('load', aplicar);
+  }, [capa]);
 
   // Acerca el mapa a la obra pedida. Con clustering, un zoom cercano la separa de sus vecinas.
   useEffect(() => {

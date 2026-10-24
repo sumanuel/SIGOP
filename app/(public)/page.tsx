@@ -6,11 +6,25 @@ import ObrasMapLoader from '@/components/map/obras-map-loader';
 import { MapSidebar, claveAnio, claveParroquia, type Vista } from '@/components/map/map-sidebar';
 import { ObrasLista } from '@/components/map/obras-lista';
 import { ObraDetallePanel } from '@/components/map/obra-detalle-panel';
+import { SelectorCapas } from '@/components/map/selector-capas';
+import { CAPA_POR_DEFECTO, esCapaMapa, type CapaMapa } from '@/lib/map-style';
 import { OBRAS_DEMO } from '@/lib/data/obras-demo';
 import { normalizarTexto } from '@/lib/texto';
 import type { ObraMapa } from '@/lib/types/obra';
 
 type EstadoCarga = 'cargando' | 'ok' | 'error';
+
+const CLAVE_CAPA = 'sigop-capa-mapa';
+
+/** La capa elegida se recuerda en este navegador; si el almacenamiento no está disponible se usa la de siempre. */
+function leerCapaGuardada(): CapaMapa {
+  try {
+    const guardada = window.localStorage.getItem(CLAVE_CAPA);
+    return esCapaMapa(guardada) ? guardada : CAPA_POR_DEFECTO;
+  } catch {
+    return CAPA_POR_DEFECTO;
+  }
+}
 
 // Los montos de monedas distintas no se pueden comparar (9.600.000 USD no son
 // 9.600.000 Bs.): el filtro de presupuesto trabaja siempre dentro de UNA moneda.
@@ -33,6 +47,17 @@ export default function MapaPage() {
   // Pedido de acercar el mapa a una obra; `token` cambia en cada pedido para poder repetir la misma.
   const [enfoque, setEnfoque] = useState<{ obra: ObraMapa; token: number } | null>(null);
   const [vista, setVista] = useState<Vista>('mapa');
+  // Se lee de localStorage al montar; el selector no se dibuja hasta que cargan las obras, así que no hay desajuste de hidratación.
+  const [capa, setCapa] = useState<CapaMapa>(() => (typeof window === 'undefined' ? CAPA_POR_DEFECTO : leerCapaGuardada()));
+
+  function cambiarCapa(nueva: CapaMapa) {
+    setCapa(nueva);
+    try {
+      window.localStorage.setItem(CLAVE_CAPA, nueva);
+    } catch {
+      /* sin almacenamiento: la elección vale solo para esta visita */
+    }
+  }
   const [filtrosAbiertosEnMovil, setFiltrosAbiertosEnMovil] = useState(false);
 
   const [busqueda, setBusqueda] = useState('');
@@ -187,10 +212,12 @@ export default function MapaPage() {
 
       <div className="relative flex-1">
         {vista === 'mapa' ? (
-          <ObrasMapLoader obras={obrasFiltradas} onSeleccionarObra={setObraSeleccionada} enfoque={enfoque} />
+          <ObrasMapLoader obras={obrasFiltradas} onSeleccionarObra={setObraSeleccionada} enfoque={enfoque} capa={capa} />
         ) : (
           <ObrasLista obras={obrasFiltradas} onSeleccionar={setObraSeleccionada} />
         )}
+
+        {vista === 'mapa' && estado !== 'cargando' && <SelectorCapas capa={capa} onCambiar={cambiarCapa} />}
 
         {/* En escritorio los filtros ya están siempre visibles en el sidebar
             — este botón flotante es el único camino a buscador/filtros/vista
