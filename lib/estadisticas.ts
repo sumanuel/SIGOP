@@ -35,7 +35,6 @@ export interface Estadisticas {
   porTipo: { nombre: string; color: string; cantidad: number }[];
   porEstatus: { nombre: string; color: string; cantidad: number }[];
   porEstado: { estado: string; cantidad: number; inversionPorMoneda: Record<string, number>; avancePromedio: number }[];
-  culminadasPorAnio: { anio: number; cantidad: number }[];
 }
 
 export function aplicarFiltros(filas: FilaEstadistica[], f: FiltrosEstadistica): FilaEstadistica[] {
@@ -68,7 +67,6 @@ export function calcularEstadisticas(filas: FilaEstadistica[]): Estadisticas {
   const tipos = new Map<string, { nombre: string; color: string; cantidad: number }>();
   const estatus = new Map<string, { nombre: string; color: string; cantidad: number; orden: number }>();
   const estados = new Map<string, { estado: string; cantidad: number; inversionPorMoneda: Record<string, number>; avanceSuma: number }>();
-  const anios = new Map<number, number>();
 
   for (const o of filas) {
     const t = tipos.get(o.tipo);
@@ -82,8 +80,6 @@ export function calcularEstadisticas(filas: FilaEstadistica[]): Estadisticas {
     sumar(e.inversionPorMoneda, o.moneda, o.presupuesto);
     e.avanceSuma += o.avance;
     estados.set(o.estado, e);
-
-    if (o.anioFinReal !== null) anios.set(o.anioFinReal, (anios.get(o.anioFinReal) ?? 0) + 1);
   }
 
   return {
@@ -102,7 +98,6 @@ export function calcularEstadisticas(filas: FilaEstadistica[]): Estadisticas {
         avancePromedio: Math.round(e.avanceSuma / e.cantidad),
       }))
       .sort((a, b) => b.avancePromedio - a.avancePromedio),
-    culminadasPorAnio: [...anios.entries()].map(([anio, cantidad]) => ({ anio, cantidad })).sort((a, b) => a.anio - b.anio),
   };
 }
 
@@ -129,4 +124,54 @@ export function parametrosDeFiltros(f: FiltrosEstadistica): string {
   if (f.estatus) p.set('estatus', f.estatus);
   if (f.anio !== undefined) p.set('anio', String(f.anio));
   return p.toString();
+}
+
+export type MetricaSerie = 'obras' | 'inversion';
+
+export interface PuntoSerie {
+  anio: number;
+  /** Obras (o inversión) aprobadas ese año. */
+  aprobadas: number;
+  /** Obras (o inversión) cuya fecha real de fin cae en ese año. */
+  culminadas: number;
+}
+
+/**
+ * Evolución año por año: aprobadas (por año de aprobación) y culminadas (por
+ * año de fin real). Rellena los años intermedios sin actividad con ceros para
+ * que la línea no "salte". Con métrica `inversion` solo cuenta obras de
+ * `moneda` (nunca se mezclan monedas). Las obras sin la fecha correspondiente
+ * no entran en esa serie. `acumulado` va sumando año tras año.
+ */
+export function serieTemporal(
+  filas: FilaEstadistica[],
+  opciones: { metrica: MetricaSerie; moneda?: string; acumulado?: boolean }
+): PuntoSerie[] {
+  const { metrica, moneda, acumulado = false } = opciones;
+  const base = metrica === 'inversion' ? filas.filter((o) => o.moneda === moneda) : filas;
+  const valor = (o: FilaEstadistica) => (metrica === 'inversion' ? o.presupuesto : 1);
+
+  const aprobadas = new Map<number, number>();
+  const culminadas = new Map<number, number>();
+  for (const o of base) {
+    if (o.anioAprobacion !== null) aprobadas.set(o.anioAprobacion, (aprobadas.get(o.anioAprobacion) ?? 0) + valor(o));
+    if (o.anioFinReal !== null) culminadas.set(o.anioFinReal, (culminadas.get(o.anioFinReal) ?? 0) + valor(o));
+  }
+
+  const anios = [...aprobadas.keys(), ...culminadas.keys()];
+  if (anios.length === 0) return [];
+  const desde = Math.min(...anios);
+  const hasta = Math.max(...anios);
+
+  const serie: PuntoSerie[] = [];
+  let sumaAprobadas = 0;
+  let sumaCulminadas = 0;
+  for (let anio = desde; anio <= hasta; anio++) {
+    const a = aprobadas.get(anio) ?? 0;
+    const c = culminadas.get(anio) ?? 0;
+    sumaAprobadas += a;
+    sumaCulminadas += c;
+    serie.push(acumulado ? { anio, aprobadas: sumaAprobadas, culminadas: sumaCulminadas } : { anio, aprobadas: a, culminadas: c });
+  }
+  return serie;
 }

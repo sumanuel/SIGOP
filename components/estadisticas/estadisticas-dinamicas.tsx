@@ -14,7 +14,7 @@ import { formatearMoneda } from '@/lib/format';
 import { GraficoPorTipo } from '@/components/estadisticas/grafico-por-tipo';
 import { GraficoPorEstatus } from '@/components/estadisticas/grafico-por-estatus';
 import { GraficoPorEstado } from '@/components/estadisticas/grafico-por-estado';
-import { GraficoCulminadasPorAnio } from '@/components/estadisticas/grafico-culminadas-por-anio';
+import { GraficoEvolucion } from '@/components/estadisticas/grafico-evolucion';
 import { RankingEstados } from '@/components/estadisticas/ranking-estados';
 
 interface EstadisticasDinamicasProps {
@@ -35,6 +35,10 @@ export function EstadisticasDinamicas({ filas, filtrosIniciales }: EstadisticasD
 
   const filtradas = useMemo(() => aplicarFiltros(filas, filtros), [filas, filtros]);
   const stats = useMemo(() => calcularEstadisticas(filtradas), [filtradas]);
+  // La evolución ignora el filtro de año: con un solo año no habría línea que mostrar.
+  const filasParaEvolucion = useMemo(() => aplicarFiltros(filas, { ...filtros, anio: undefined }), [filas, filtros]);
+
+  const monedasEvolucion = useMemo(() => calcularEstadisticas(filasParaEvolucion).monedas, [filasParaEvolucion]);
 
   // Las opciones salen de TODAS las obras, para que no desaparezcan al filtrar.
   const opciones = useMemo(
@@ -174,8 +178,8 @@ export function EstadisticasDinamicas({ filas, filtrosIniciales }: EstadisticasD
       </div>
 
       <section className="mt-8 rounded-lg border border-border p-4">
-        <h2 className="mb-4 text-sm font-semibold">Obras culminadas por año</h2>
-        <GraficoCulminadasPorAnio datos={stats.culminadasPorAnio} />
+        <h2 className="mb-4 text-sm font-semibold">Evolución en el tiempo</h2>
+        <GraficoEvolucion filas={filasParaEvolucion} monedas={monedasEvolucion} />
       </section>
 
       <section className="mt-8 rounded-lg border border-border p-4">

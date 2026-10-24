@@ -5,6 +5,7 @@ import {
   filtrosDesdeParametros,
   hayFiltros,
   parametrosDeFiltros,
+  serieTemporal,
   type FilaEstadistica,
 } from '@/lib/estadisticas';
 
@@ -54,10 +55,6 @@ describe('calcularEstadisticas', () => {
     expect(s.porEstado.find((e) => e.estado === 'Zulia')?.inversionPorMoneda).toEqual({ VES: 500, USD: 70 });
   });
 
-  it('cuenta las culminadas por año de fin real', () => {
-    expect(s.culminadasPorAnio).toEqual([{ anio: 2025, cantidad: 1 }, { anio: 2026, cantidad: 1 }]);
-  });
-
   it('sin obras no hay división por cero', () => {
     expect(calcularEstadisticas([])).toMatchObject({ totalObras: 0, avancePromedio: 0, monedas: [], porEstado: [] });
   });
@@ -102,5 +99,36 @@ describe('filtros en la URL', () => {
 
   it('sin filtros no genera parámetros', () => {
     expect(parametrosDeFiltros({})).toBe('');
+  });
+});
+
+describe('serieTemporal', () => {
+  it('cuenta aprobadas por año de aprobación y culminadas por año de fin real, rellenando los años vacíos', () => {
+    // aprobadas: 2026 ×2, 2024 ×1 (la obra sin fecha no entra); culminadas: 2025, 2026
+    expect(serieTemporal(filas, { metrica: 'obras' })).toEqual([
+      { anio: 2024, aprobadas: 1, culminadas: 0 },
+      { anio: 2025, aprobadas: 0, culminadas: 1 },
+      { anio: 2026, aprobadas: 2, culminadas: 1 },
+    ]);
+  });
+
+  it('el acumulado va sumando año tras año', () => {
+    expect(serieTemporal(filas, { metrica: 'obras', acumulado: true }).map((p) => [p.aprobadas, p.culminadas])).toEqual([
+      [1, 0],
+      [1, 1],
+      [3, 2],
+    ]);
+  });
+
+  it('la inversión solo suma la moneda pedida (nunca VES con USD)', () => {
+    const ves = serieTemporal(filas, { metrica: 'inversion', moneda: 'VES' });
+    expect(ves.find((p) => p.anio === 2026)).toEqual({ anio: 2026, aprobadas: 1000, culminadas: 300 });
+    const usd = serieTemporal(filas, { metrica: 'inversion', moneda: 'USD' });
+    expect(usd).toEqual([{ anio: 2026, aprobadas: 70, culminadas: 0 }]);
+  });
+
+  it('sin fechas devuelve una serie vacía', () => {
+    expect(serieTemporal([fila({ anioAprobacion: null })], { metrica: 'obras' })).toEqual([]);
+    expect(serieTemporal([], { metrica: 'obras' })).toEqual([]);
   });
 });
