@@ -17,6 +17,7 @@ const ObrasMap = dynamic(() => import('./obras-map'), {
 interface ObrasMapLoaderProps {
   obras: ObraMapa[];
   onSeleccionarObra?: (obra: ObraMapa) => void;
+  enfoque?: { obra: ObraMapa; token: number } | null;
 }
 
 export default function ObrasMapLoader(props: ObrasMapLoaderProps) {

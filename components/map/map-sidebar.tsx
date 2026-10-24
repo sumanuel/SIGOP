@@ -1,4 +1,4 @@
-import { Map as MapIcon, List, Search, Building2, CheckCircle2, TrendingUp, X, type LucideIcon } from 'lucide-react';
+import { Map as MapIcon, List, Search, Building2, CheckCircle2, Star, TrendingUp, X, type LucideIcon } from 'lucide-react';
 import type { ObraMapa } from '@/lib/types/obra';
 import { formatearMoneda } from '@/lib/format';
 import { FiltroDesplegable, type FiltroItem } from '@/components/map/filtro-desplegable';
@@ -39,7 +39,11 @@ interface MapSidebarProps {
    * mapa) — en escritorio siempre está visible y estas props no aplican. */
   abiertoEnMovil: boolean;
   onCerrarEnMovil: () => void;
+  /** Clic en una obra destacada: la página abre su detalle y acerca el mapa. */
+  onSeleccionarObra: (obra: ObraMapa) => void;
 }
+
+const MAX_DESTACADAS = 5;
 
 /** "2025" o, para obras sin fecha de aprobación, el bucket "Sin fecha". */
 export function claveAnio(obra: ObraMapa): string {
@@ -79,7 +83,10 @@ export function MapSidebar({
   presupuestoActivo,
   abiertoEnMovil,
   onCerrarEnMovil,
+  onSeleccionarObra,
 }: MapSidebarProps) {
+  // Solo se muestran las destacadas que pasan los filtros, para que la lista no contradiga el mapa.
+  const destacadas = obrasFiltradas.filter((o) => o.destacada).slice(0, MAX_DESTACADAS);
   const totalObras = obrasFiltradas.length;
   const culminadas = obrasFiltradas.filter(
     (o) => o.estatus.nombre === 'Culminada' || o.estatus.nombre === 'Inaugurada'
@@ -154,6 +161,44 @@ export function MapSidebar({
           <List className="size-4" /> Lista
         </button>
       </div>
+
+      {destacadas.length > 0 && (
+        <section aria-label="Obras destacadas">
+          <h2 className="mb-3 flex items-center gap-1.5 border-l-2 border-amber-500 pl-2 text-xs font-semibold uppercase tracking-wide text-foreground/70">
+            <Star className="size-3.5 fill-amber-500 text-amber-500" aria-hidden="true" />
+            Obras destacadas
+          </h2>
+          <ul className="flex flex-col gap-2">
+            {destacadas.map((obra) => (
+              <li key={obra.id}>
+                <button
+                  type="button"
+                  onClick={() => onSeleccionarObra(obra)}
+                  className="flex w-full flex-col gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/5 p-2.5 text-left hover:border-amber-500 hover:bg-amber-500/10"
+                >
+                  <span className="text-sm font-medium leading-snug">{obra.nombre}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {obra.municipio}, {obra.estado} · {obra.estatus.nombre}
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span
+                      role="progressbar"
+                      aria-label={`Avance físico de ${obra.nombre}`}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={obra.avanceFisico}
+                      className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted"
+                    >
+                      <span className="block h-full rounded-full bg-amber-500" style={{ width: `${obra.avanceFisico}%` }} />
+                    </span>
+                    <span className="text-xs tabular-nums text-muted-foreground">{obra.avanceFisico}%</span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section>
         <h2 className="mb-3 border-l-2 border-primary/40 pl-2 text-xs font-semibold uppercase tracking-wide text-foreground/70">

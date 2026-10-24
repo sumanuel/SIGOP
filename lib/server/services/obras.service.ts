@@ -22,6 +22,7 @@ interface FilaObraMapa {
   slug: string;
   nombre: string;
   avanceFisico: number;
+  destacada: boolean;
   presupuestoAprobado: number;
   moneda: string;
   anioAprobacion: number | null;
@@ -45,6 +46,7 @@ export async function listarObrasParaMapa(): Promise<ObraMapa[]> {
       o.slug,
       o.nombre,
       o."avanceFisico" AS "avanceFisico",
+      o.destacada AS destacada,
       o."presupuestoAprobado"::float AS "presupuestoAprobado",
       o.moneda AS moneda,
       EXTRACT(YEAR FROM o."fechaAprobacion")::int AS "anioAprobacion",
@@ -77,6 +79,7 @@ export async function listarObrasParaMapa(): Promise<ObraMapa[]> {
       slug: fila.slug,
       nombre: fila.nombre,
       avanceFisico: fila.avanceFisico,
+      destacada: fila.destacada,
       presupuestoAprobado: fila.presupuestoAprobado,
       moneda: fila.moneda,
       anioAprobacion: fila.anioAprobacion,
@@ -424,6 +427,11 @@ export async function actualizarObra(id: string, data: ActualizarObraInput, ctx:
   if (!obraAntes) return null;
 
   const { lat, lng, trazado, trazadoTipo, motivoCambioPresupuesto, documentoCambioPresupuestoUrl, ...campos } = data;
+
+  // Destacar una obra decide qué ve el público en la portada: lo hace un aprobador, no un editor.
+  if (campos.destacada !== undefined && campos.destacada !== obraAntes.destacada && !ROLES_SIN_REVISION.includes(ctx.rol)) {
+    throw new ObraError(403, 'Solo un aprobador puede destacar una obra o quitarle el destacado.');
+  }
 
   // Cambiar el presupuesto aprobado exige justificarlo: queda en el historial público.
   const cambioPresupuesto =

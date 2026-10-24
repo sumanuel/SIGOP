@@ -12,6 +12,8 @@ import { obtenerIconoTipoObra } from '@/lib/tipo-obra-icono';
 interface ObrasMapProps {
   obras: ObraMapa[];
   onSeleccionarObra?: (obra: ObraMapa) => void;
+  /** Pide acercar el mapa a una obra (p. ej. desde la lista de destacadas). `token` cambia en cada pedido, para poder repetirlo. */
+  enfoque?: { obra: ObraMapa; token: number } | null;
 }
 
 interface PropiedadesPunto {
@@ -31,7 +33,7 @@ type Indice = Supercluster<PropiedadesPunto, PropiedadesPunto>;
 const RADIO_CLUSTER = 60; // px — dos puntos a menos de esto se agrupan
 const ZOOM_MAXIMO_CLUSTER = 16; // desde este zoom, todo se muestra individual
 
-export default function ObrasMap({ obras, onSeleccionarObra }: ObrasMapProps) {
+export default function ObrasMap({ obras, onSeleccionarObra, enfoque }: ObrasMapProps) {
   const contenedorRef = useRef<HTMLDivElement | null>(null);
   const mapaRef = useRef<maplibregl.Map | null>(null);
   const marcadoresRef = useRef<maplibregl.Marker[]>([]);
@@ -82,6 +84,13 @@ export default function ObrasMap({ obras, onSeleccionarObra }: ObrasMapProps) {
       mapaRef.current = null;
     };
   }, []);
+
+  // Acerca el mapa a la obra pedida. Con clustering, un zoom cercano la separa de sus vecinas.
+  useEffect(() => {
+    const mapa = mapaRef.current;
+    if (!mapa || !enfoque) return;
+    mapa.flyTo({ center: [enfoque.obra.lng, enfoque.obra.lat], zoom: Math.max(mapa.getZoom(), 12), essential: true });
+  }, [enfoque]);
 
   // Reconstruye el índice de clustering cada vez que cambia la lista de
   // obras, y vuelve a pintar de inmediato con el resultado.
@@ -171,15 +180,19 @@ function renderizarClusters(
     const el = document.createElement('button');
     el.type = 'button';
     el.setAttribute('aria-label', `${obra.nombre} — ${obra.tipoObra.nombre} — ${obra.estatus.nombre}`);
-    el.style.width = '28px';
-    el.style.height = '28px';
+    const tamano = obra.destacada ? 34 : 28;
+    el.style.width = `${tamano}px`;
+    el.style.height = `${tamano}px`;
+    el.style.position = 'relative';
     el.style.display = 'flex';
     el.style.alignItems = 'center';
     el.style.justifyContent = 'center';
     el.style.borderRadius = '9999px';
-    el.style.border = '2px solid white';
-    el.style.boxShadow = '0 1px 4px rgba(0,0,0,0.4)';
+    // Las obras destacadas llevan un aro dorado y una estrella para distinguirse de lejos.
+    el.style.border = obra.destacada ? '3px solid #F59E0B' : '2px solid white';
+    el.style.boxShadow = obra.destacada ? '0 0 0 2px white, 0 2px 6px rgba(0,0,0,0.5)' : '0 1px 4px rgba(0,0,0,0.4)';
     el.style.backgroundColor = obra.tipoObra.color;
+    if (obra.destacada) el.style.zIndex = '2';
     el.style.cursor = 'pointer';
 
     const Icono = obtenerIconoTipoObra(obra.tipoObra.icono);
@@ -187,10 +200,20 @@ function renderizarClusters(
       createElement(Icono, { color: 'white', size: 15, strokeWidth: 2.5 })
     );
 
+    if (obra.destacada) {
+      const estrella = document.createElement('span');
+      estrella.setAttribute('aria-hidden', 'true');
+      estrella.textContent = '★';
+      estrella.style.cssText =
+        'position:absolute;top:-9px;right:-9px;width:16px;height:16px;border-radius:9999px;background:#F59E0B;color:white;font-size:11px;line-height:16px;text-align:center;box-shadow:0 1px 2px rgba(0,0,0,0.4)';
+      el.appendChild(estrella);
+      el.setAttribute('aria-label', `Obra destacada: ${obra.nombre} — ${obra.tipoObra.nombre} — ${obra.estatus.nombre}`);
+    }
+
     const popup = new maplibregl.Popup({ offset: 14, closeButton: false }).setHTML(`
       <div style="font-family: inherit; min-width: 200px;">
         <p style="font-size: 12px; font-weight: 600; color: ${obra.tipoObra.color}; margin: 0 0 2px;">
-          ${obra.tipoObra.nombre}
+          ${obra.tipoObra.nombre}${obra.destacada ? ' · ★ Destacada' : ''}
         </p>
         <p style="font-size: 14px; font-weight: 600; margin: 0 0 4px;">${obra.nombre}</p>
         <p style="font-size: 12px; color: #525252; margin: 0 0 2px;">${obra.municipio} · ${obra.codigo}</p>

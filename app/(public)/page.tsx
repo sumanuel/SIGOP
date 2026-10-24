@@ -30,6 +30,8 @@ export default function MapaPage() {
   const [estado, setEstado] = useState<EstadoCarga>('cargando');
   const [modoDemo, setModoDemo] = useState(false);
   const [obraSeleccionada, setObraSeleccionada] = useState<ObraMapa | null>(null);
+  // Pedido de acercar el mapa a una obra; `token` cambia en cada pedido para poder repetir la misma.
+  const [enfoque, setEnfoque] = useState<{ obra: ObraMapa; token: number } | null>(null);
   const [vista, setVista] = useState<Vista>('mapa');
   const [filtrosAbiertosEnMovil, setFiltrosAbiertosEnMovil] = useState(false);
 
@@ -171,11 +173,16 @@ export default function MapaPage() {
         presupuestoActivo={presupuestoActivo}
         abiertoEnMovil={filtrosAbiertosEnMovil}
         onCerrarEnMovil={() => setFiltrosAbiertosEnMovil(false)}
+        onSeleccionarObra={(obra) => {
+          setObraSeleccionada(obra);
+          setEnfoque((previo) => ({ obra, token: (previo?.token ?? 0) + 1 }));
+          setFiltrosAbiertosEnMovil(false);
+        }}
       />
 
       <div className="relative flex-1">
         {vista === 'mapa' ? (
-          <ObrasMapLoader obras={obrasFiltradas} onSeleccionarObra={setObraSeleccionada} />
+          <ObrasMapLoader obras={obrasFiltradas} onSeleccionarObra={setObraSeleccionada} enfoque={enfoque} />
         ) : (
           <ObrasLista obras={obrasFiltradas} onSeleccionar={setObraSeleccionada} />
         )}

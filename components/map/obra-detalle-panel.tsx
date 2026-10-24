@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { X } from 'lucide-react';
+import { Star, X } from 'lucide-react';
 import type { ObraMapa } from '@/lib/types/obra';
 import { ReportarObraForm } from '@/components/map/reportar-obra-form';
 
@@ -23,8 +23,14 @@ export function ObraDetallePanel({ obra, onCerrar }: ObraDetallePanelProps) {
     <div className="absolute right-4 top-4 flex w-[min(22rem,calc(100%-2rem))] flex-col gap-3 rounded-lg border border-border bg-background p-4 shadow-xl">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-xs font-semibold" style={{ color: obra.tipoObra.color }}>
+          <p className="flex items-center gap-2 text-xs font-semibold" style={{ color: obra.tipoObra.color }}>
             {obra.tipoObra.nombre}
+            {obra.destacada && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-amber-800 dark:text-amber-300">
+                <Star className="size-3 fill-current" aria-hidden="true" />
+                Destacada
+              </span>
+            )}
           </p>
           <h2 className="text-base font-semibold leading-snug">{obra.nombre}</h2>
         </div>

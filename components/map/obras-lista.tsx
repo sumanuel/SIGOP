@@ -1,3 +1,4 @@
+import { Star } from 'lucide-react';
 import type { ObraMapa } from '@/lib/types/obra';
 
 interface ObrasListaProps {
@@ -34,7 +35,10 @@ export function ObrasLista({ obras, onSeleccionar }: ObrasListaProps) {
               aria-hidden="true"
             />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{obra.nombre}</p>
+              <p className="flex items-center gap-1.5 truncate text-sm font-medium">
+                {obra.destacada && <Star className="size-3.5 shrink-0 fill-amber-500 text-amber-500" aria-label="Obra destacada" />}
+                <span className="truncate">{obra.nombre}</span>
+              </p>
               <p className="truncate text-xs text-muted-foreground">
                 {obra.codigo} · {obra.municipio}, {obra.estado}
               </p>

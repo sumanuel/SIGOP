@@ -18,6 +18,8 @@ export interface ObraMapa {
     color: string;
   };
   avanceFisico: number;
+  /** Obra destacada por un aprobador: se resalta en el mapa y en la barra lateral. */
+  destacada: boolean;
   presupuestoAprobado: number;
   /** Moneda del presupuesto (VES, USD…): los montos de monedas distintas no se comparan entre sí. */
   moneda: string;
